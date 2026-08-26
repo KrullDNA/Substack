@@ -76,6 +76,56 @@ class KDNA_AB_API {
 		return $this->request( 'GET', 'clients.json' );
 	}
 
+	/**
+	 * Fetches the basic details for a single client.
+	 *
+	 * Returns the client BasicDetails, for example company name, country and
+	 * time zone. Campaign Monitor does not expose verified sender addresses
+	 * through the public API, so from and reply to addresses are validated by
+	 * format rather than against a server list.
+	 *
+	 * @param string $client_id Campaign Monitor client ID.
+	 * @return array|WP_Error
+	 */
+	public function get_client_details( $client_id ) {
+		return $this->request( 'GET', 'clients/' . rawurlencode( $client_id ) . '.json' );
+	}
+
+	/**
+	 * Fetches the subscriber lists belonging to a client.
+	 *
+	 * @param string $client_id Campaign Monitor client ID.
+	 * @return array|WP_Error Array of lists on success.
+	 */
+	public function get_client_lists( $client_id ) {
+		return $this->request( 'GET', 'clients/' . rawurlencode( $client_id ) . '/lists.json' );
+	}
+
+	/**
+	 * Fetches the templates belonging to a client.
+	 *
+	 * @param string $client_id Campaign Monitor client ID.
+	 * @return array|WP_Error Array of templates on success.
+	 */
+	public function get_client_templates( $client_id ) {
+		return $this->request( 'GET', 'clients/' . rawurlencode( $client_id ) . '/templates.json' );
+	}
+
+	/**
+	 * Fetches the details for a single template.
+	 *
+	 * Campaign Monitor returns the template name, preview URL and screenshot
+	 * URL only. The API does not enumerate a template editable regions, which is
+	 * why the plugin maps content to the template by position rather than by
+	 * region name. The screenshot is used as a visual reference while mapping.
+	 *
+	 * @param string $template_id Campaign Monitor template ID.
+	 * @return array|WP_Error
+	 */
+	public function get_template( $template_id ) {
+		return $this->request( 'GET', 'templates/' . rawurlencode( $template_id ) . '.json' );
+	}
+
 	/*
 	 * -----------------------------------------------------------------------
 	 * Core request

@@ -5,8 +5,12 @@
  * happens on the alpine:init event, so this file can load before or after
  * Alpine itself without any ordering problem.
  *
- * Data such as the AJAX URL, nonce and stored connection arrives on the global
- * kdnaAb object, localised from PHP.
+ * Stage 1 covers the connection test and key storage. Stage 2 adds the client,
+ * list and template selection, cached against the live API, and the positional
+ * template region mapping.
+ *
+ * Data such as the AJAX URL, nonce, saved selection and field definitions
+ * arrives on the global kdnaAb object, localised from PHP.
  *
  * @package KDNA_Article_Broadcast
  */
@@ -17,14 +21,18 @@
 	 * Sends a POST request to admin-ajax.php.
 	 *
 	 * @param {string} action WordPress AJAX action name.
-	 * @param {string} apiKey API key entered by the user, may be blank.
+	 * @param {Object} params Extra fields to send.
 	 * @return {Promise<Object>} Resolves with the parsed JSON response.
 	 */
-	function postAction( action, apiKey ) {
+	function request( action, params ) {
 		var body = new FormData();
 		body.append( 'action', action );
 		body.append( 'nonce', kdnaAb.nonce );
-		body.append( 'api_key', apiKey );
+
+		params = params || {};
+		Object.keys( params ).forEach( function ( name ) {
+			body.append( name, params[ name ] );
+		} );
 
 		return fetch( kdnaAb.ajaxUrl, {
 			method: 'POST',
@@ -36,12 +44,30 @@
 	}
 
 	/**
+	 * Finds an item by id in a list of { id, name } objects.
+	 *
+	 * @param {Array}  list List to search.
+	 * @param {string} id   Id to find.
+	 * @return {Object|null}
+	 */
+	function findById( list, id ) {
+		var found = null;
+		( list || [] ).forEach( function ( item ) {
+			if ( item.id === id ) {
+				found = item;
+			}
+		} );
+		return found;
+	}
+
+	/**
 	 * The Alpine component factory.
 	 *
 	 * @return {Object} Alpine component definition.
 	 */
 	function kdnaAbSettings() {
 		return {
+			// Stage 1 state.
 			apiKey: '',
 			showKey: false,
 			hasKey: !! kdnaAb.hasKey,
@@ -51,14 +77,53 @@
 			result: null,
 			connection: kdnaAb.connection || { verified: false },
 
+			// Stage 2 state.
+			clients: [],
+			lists: [],
+			templates: [],
+			fields: kdnaAb.fields || { single: [], digestTop: [], digestRepeater: [] },
+			typeLabels: kdnaAb.typeLabels || {},
+			selection: JSON.parse( JSON.stringify( kdnaAb.selection || {} ) ),
+			loadingClients: false,
+			loadingClientData: false,
+			savingSelection: false,
+			refreshing: false,
+			selectionResult: null,
+
 			/**
-			 * True while either request is in flight.
+			 * True while a Stage 1 request is in flight.
 			 *
 			 * @return {boolean}
 			 */
 			get busy() {
 				return this.testing || this.saving;
 			},
+
+			/**
+			 * True while a Stage 2 request is in flight.
+			 *
+			 * @return {boolean}
+			 */
+			get busy2() {
+				return this.loadingClients || this.loadingClientData || this.savingSelection || this.refreshing;
+			},
+
+			/**
+			 * Component entry point, called from x-init.
+			 *
+			 * @return {void}
+			 */
+			init: function () {
+				if ( this.connection && this.connection.verified ) {
+					this.loadClients();
+				}
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 1
+			 * -----------------------------------------------------------------
+			 */
 
 			/**
 			 * Runs a live connection test without saving.
@@ -78,16 +143,16 @@
 				this.testing = true;
 				this.result = { type: 'info', message: kdnaAb.i18n.testing };
 
-				postAction( 'kdna_ab_test_connection', this.apiKey )
-					.then( this.handleResponse.bind( this ) )
-					.catch( this.handleFailure.bind( this ) )
+				request( 'kdna_ab_test_connection', { api_key: this.apiKey } )
+					.then( this.handleConnection.bind( this ) )
+					.catch( this.handleConnectionFailure.bind( this ) )
 					.finally( function () {
 						this.testing = false;
 					}.bind( this ) );
 			},
 
 			/**
-			 * Validates and saves the settings.
+			 * Validates and saves the API key.
 			 *
 			 * @return {void}
 			 */
@@ -104,32 +169,37 @@
 				this.saving = true;
 				this.result = { type: 'info', message: kdnaAb.i18n.saving };
 
-				postAction( 'kdna_ab_save_settings', this.apiKey )
-					.then( this.handleResponse.bind( this ) )
-					.catch( this.handleFailure.bind( this ) )
+				request( 'kdna_ab_save_settings', { api_key: this.apiKey } )
+					.then( function ( payload ) {
+						this.handleConnection( payload );
+
+						// A verified save unlocks Stage 2, so load the clients.
+						if ( payload && payload.success && this.connection.verified && ! this.clients.length ) {
+							this.loadClients();
+						}
+					}.bind( this ) )
+					.catch( this.handleConnectionFailure.bind( this ) )
 					.finally( function () {
 						this.saving = false;
 					}.bind( this ) );
 			},
 
 			/**
-			 * Handles a parsed AJAX response.
+			 * Handles a Stage 1 AJAX response.
 			 *
 			 * @param {Object} payload Response from admin-ajax.php.
 			 * @return {void}
 			 */
-			handleResponse: function ( payload ) {
+			handleConnection: function ( payload ) {
 				if ( payload && payload.success && payload.data ) {
 					this.result = { type: 'success', message: payload.data.message };
 
 					if ( payload.data.connection ) {
 						this.connection = payload.data.connection;
 						this.hasKey = true;
-						// Field is cleared after a successful save, the key is stored.
 						this.apiKey = '';
 					}
 
-					// Fire a namespaced event so other scripts can react.
 					window.dispatchEvent( new CustomEvent( 'kdna:connection-verified', {
 						detail: payload.data
 					} ) );
@@ -144,11 +214,11 @@
 			},
 
 			/**
-			 * Handles a network or parsing failure.
+			 * Handles a Stage 1 network failure.
 			 *
 			 * @return {void}
 			 */
-			handleFailure: function () {
+			handleConnectionFailure: function () {
 				this.result = { type: 'error', message: kdnaAb.i18n.networkError };
 			},
 
@@ -173,6 +243,304 @@
 				}
 
 				return parts.join( ' • ' );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 2
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Loads the account clients, then the saved client data if any.
+			 *
+			 * @return {void}
+			 */
+			loadClients: function () {
+				this.loadingClients = true;
+
+				request( 'kdna_ab_get_clients', {} )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.clients = payload.data.clients || [];
+
+							if ( this.selection.clientId ) {
+								this.loadClientData();
+							}
+						} else {
+							this.selectionResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.selectionResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.loadingClients = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Handles a user changing the client dropdown.
+			 *
+			 * The old list and templates belong to the previous client, so they
+			 * are cleared before the new client data loads.
+			 *
+			 * @return {void}
+			 */
+			onClientChange: function () {
+				var client = findById( this.clients, this.selection.clientId );
+				this.selection.clientName = client ? client.name : '';
+
+				this.selection.listId = '';
+				this.selection.templateSingle = '';
+				this.selection.templateDigest = '';
+				this.lists = [];
+				this.templates = [];
+
+				if ( this.selection.clientId ) {
+					this.loadClientData();
+				}
+			},
+
+			/**
+			 * Loads the lists and templates for the selected client.
+			 *
+			 * @return {void}
+			 */
+			loadClientData: function () {
+				if ( ! this.selection.clientId ) {
+					return;
+				}
+
+				this.loadingClientData = true;
+
+				request( 'kdna_ab_get_client_data', { client_id: this.selection.clientId } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.lists = payload.data.lists || [];
+							this.templates = payload.data.templates || [];
+						} else {
+							this.selectionResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.selectionResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.loadingClientData = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Clears the cache and refetches everything from Campaign Monitor.
+			 *
+			 * @return {void}
+			 */
+			refresh: function () {
+				if ( this.busy2 ) {
+					return;
+				}
+
+				this.refreshing = true;
+				this.selectionResult = { type: 'info', message: kdnaAb.i18n.refreshing };
+
+				request( 'kdna_ab_refresh_cache', {} )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.clients = payload.data.clients || [];
+							this.selectionResult = { type: 'success', message: payload.data.message };
+
+							if ( this.selection.clientId ) {
+								this.loadClientData();
+							}
+						} else {
+							this.selectionResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.selectionResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.refreshing = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Returns the screenshot URL for the chosen single or digest template.
+			 *
+			 * @param {string} which Either "single" or "digest".
+			 * @return {string}
+			 */
+			templatePreview: function ( which ) {
+				var id = ( 'single' === which ) ? this.selection.templateSingle : this.selection.templateDigest;
+
+				if ( ! id ) {
+					return '';
+				}
+
+				var template = findById( this.templates, id );
+
+				return ( template && template.screenshot ) ? template.screenshot : '';
+			},
+
+			/**
+			 * Returns the field list for a mapping table.
+			 *
+			 * @param {string} which single, digestTop or digestRepeater.
+			 * @return {Array}
+			 */
+			fieldListFor: function ( which ) {
+				if ( 'single' === which ) {
+					return this.fields.single || [];
+				}
+				if ( 'digestTop' === which ) {
+					return this.fields.digestTop || [];
+				}
+				return this.fields.digestRepeater || [];
+			},
+
+			/**
+			 * Returns the mapping object for a mapping table.
+			 *
+			 * @param {string} which single, digestTop or digestRepeater.
+			 * @return {Object}
+			 */
+			mappingFor: function ( which ) {
+				if ( 'single' === which ) {
+					return this.selection.mappingSingle || {};
+				}
+				if ( 'digestTop' === which ) {
+					return this.selection.mappingDigestTop || {};
+				}
+				return this.selection.mappingDigestRepeater || {};
+			},
+
+			/**
+			 * Builds the positional region order preview, grouped by type.
+			 *
+			 * @param {string} which single, digestTop or digestRepeater.
+			 * @return {Array} List of { type, typeLabel, items }.
+			 */
+			orderPreview: function ( which ) {
+				var fields = this.fieldListFor( which );
+				var mapping = this.mappingFor( which );
+				var types = [ 'singleline', 'multiline', 'image' ];
+				var groups = [];
+
+				types.forEach( function ( type ) {
+					var inType = fields.filter( function ( f ) {
+						return f.type === type;
+					} );
+
+					if ( ! inType.length ) {
+						return;
+					}
+
+					var included = inType.filter( function ( f ) {
+						return mapping[ f.key ] && mapping[ f.key ].include;
+					} ).sort( function ( a, b ) {
+						return ( mapping[ a.key ].position || 0 ) - ( mapping[ b.key ].position || 0 );
+					} );
+
+					groups.push( {
+						type: type,
+						typeLabel: this.typeLabels[ type ] || type,
+						items: included.map( function ( f ) {
+							return f.label;
+						} )
+					} );
+				}.bind( this ) );
+
+				return groups;
+			},
+
+			/**
+			 * Validates then saves the selection and mapping.
+			 *
+			 * @return {void}
+			 */
+			saveSelection: function () {
+				if ( this.busy2 ) {
+					return;
+				}
+
+				if ( this.selection.fromEmail && ! this.looksLikeEmail( this.selection.fromEmail ) ) {
+					this.selectionResult = { type: 'error', message: kdnaAb.i18n.invalidEmail };
+					return;
+				}
+
+				this.savingSelection = true;
+				this.selectionResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				var single = findById( this.templates, this.selection.templateSingle );
+				var digest = findById( this.templates, this.selection.templateDigest );
+				var list = findById( this.lists, this.selection.listId );
+				var client = findById( this.clients, this.selection.clientId );
+
+				var payload = {
+					clientId: this.selection.clientId || '',
+					clientName: client ? client.name : ( this.selection.clientName || '' ),
+					listId: this.selection.listId || '',
+					listName: list ? list.name : ( this.selection.listName || '' ),
+					templateSingle: this.selection.templateSingle || '',
+					templateSingleName: single ? single.name : '',
+					templateDigest: this.selection.templateDigest || '',
+					templateDigestName: digest ? digest.name : '',
+					fromName: this.selection.fromName || '',
+					fromEmail: this.selection.fromEmail || '',
+					replyTo: this.selection.replyTo || '',
+					mappingSingle: this.selection.mappingSingle || {},
+					mappingDigestTop: this.selection.mappingDigestTop || {},
+					mappingDigestRepeater: this.selection.mappingDigestRepeater || {}
+				};
+
+				request( 'kdna_ab_save_selection', { payload: JSON.stringify( payload ) } )
+					.then( function ( response ) {
+						if ( response && response.success && response.data ) {
+							this.selectionResult = { type: 'success', message: response.data.message };
+
+							if ( response.data.selection ) {
+								// Merge saved names back, keep the reactive object.
+								this.selection = Object.assign( {}, this.selection, response.data.selection );
+							}
+						} else {
+							this.selectionResult = { type: 'error', message: this.messageFrom( response ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.selectionResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.savingSelection = false;
+					}.bind( this ) );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Small helpers
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Extracts a message from a failed response, or the default.
+			 *
+			 * @param {Object} payload Response object.
+			 * @return {string}
+			 */
+			messageFrom: function ( payload ) {
+				return ( payload && payload.data && payload.data.message )
+					? payload.data.message
+					: kdnaAb.i18n.networkError;
+			},
+
+			/**
+			 * Lightweight email shape check for inline feedback only.
+			 *
+			 * @param {string} value Candidate address.
+			 * @return {boolean}
+			 */
+			looksLikeEmail: function ( value ) {
+				return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test( value );
 			}
 		};
 	}

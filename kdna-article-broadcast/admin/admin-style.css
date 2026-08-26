@@ -158,3 +158,105 @@
 	color: var(--kdna-ab-muted);
 	font-size: 12px;
 }
+
+/* Stage 2, selection and mapping. */
+
+.kdna-ab-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.kdna-ab-refresh {
+	flex: 0 0 auto;
+}
+
+.kdna-ab-grid {
+	display: grid;
+	grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	gap: var(--kdna-ab-gap);
+}
+
+.kdna-ab-grid--three {
+	grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+}
+
+@media screen and ( max-width: 782px ) {
+	.kdna-ab-grid,
+	.kdna-ab-grid--three {
+		grid-template-columns: 1fr;
+	}
+}
+
+.kdna-ab-select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.kdna-ab-subheading {
+	margin: 24px 0 4px;
+	padding-top: var(--kdna-ab-gap);
+	border-top: 1px solid var(--kdna-ab-border);
+}
+
+.kdna-ab-template-preview {
+	margin-top: 8px;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 4px;
+	overflow: hidden;
+	max-width: 320px;
+}
+
+.kdna-ab-template-preview img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.kdna-ab-mapping-title {
+	margin: 20px 0 6px;
+}
+
+table.kdna-ab-mapping {
+	margin-bottom: 6px;
+}
+
+.kdna-ab-col-narrow {
+	width: 96px;
+	text-align: center;
+}
+
+.kdna-ab-type {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--kdna-ab-accent-ink);
+	background: var(--kdna-ab-info-bg);
+	border: 1px solid var(--kdna-ab-info-border);
+	border-radius: 999px;
+	padding: 1px 10px;
+}
+
+.kdna-ab-order {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px 16px;
+	margin: 0 0 8px;
+	padding: 8px 12px;
+	background: var(--kdna-ab-info-bg);
+	border-radius: 4px;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-order__label {
+	font-weight: 600;
+	color: var(--kdna-ab-accent-ink);
+}
+
+.kdna-ab-order__group strong {
+	font-weight: 600;
+}

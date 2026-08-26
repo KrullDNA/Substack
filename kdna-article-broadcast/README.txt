@@ -23,7 +23,7 @@ template, and the plugin fills that template with content pulled from the post.
 
 This build is delivered in stages. Each stage is individually testable.
 
-**Stage 1, plugin foundation and API connection (this release)**
+**Stage 1, plugin foundation and API connection**
 
 * Main plugin file with activation and deactivation hooks and class autoloading.
 * Settings page at Settings > KDNA Article Broadcast, built with Alpine.js for
@@ -35,6 +35,22 @@ This build is delivered in stages. Each stage is individually testable.
   endpoint and reports the actual API response, not a format check.
 * A Save that only writes settings once the key has been validated against the
   live API.
+
+**Stage 2, client, list and template selection (this release)**
+
+* AJAX driven dropdowns: pick the agency client, then its subscriber list and
+  the two templates, single article and weekly digest, with no page reload.
+* API responses cached in a one hour transient, with a manual Refresh button
+  that clears the cache and refetches.
+* Template screenshot shown as a visual reference for each chosen template.
+* From name, from email and reply to fields, validated by format. Campaign
+  Monitor does not list verified sender addresses through its API, so the
+  address is confirmed at send time.
+* Template region mapping panel. Campaign Monitor matches content to a template
+  by position, so each KDNA field is assigned an Include flag and a position
+  within its region type, single line, multi line or image. A live order
+  preview shows the resulting region order. The mapping is saved and survives a
+  reload, so changing a template later means adjusting numbers, not code.
 
 == Installation ==
 
@@ -60,3 +76,6 @@ authentication salts, and it is never sent back to the browser.
 = 1.0.0 =
 * Stage 1: plugin foundation, settings page, encrypted API key storage, shared
   Campaign Monitor API wrapper, and a genuine round trip Test connection button.
+* Stage 2: client, list and template selection with AJAX dropdowns, one hour
+  transient caching with a manual refresh, and the positional template region
+  mapping panel.

@@ -119,6 +119,23 @@ function kdna_ab_default_settings() {
 		'api_key'             => '',
 		// A record of the most recent successful connection test.
 		'connection'          => array(),
+
+		// Stage 2, client, list and template selection.
+		'client_id'           => '',
+		'client_name'         => '',
+		'list_id'             => '',
+		'list_name'           => '',
+		'template_single_id'  => '',
+		'template_single_name' => '',
+		'template_digest_id'  => '',
+		'template_digest_name' => '',
+		'from_name'           => '',
+		'from_email'          => '',
+		'reply_to'            => '',
+		// Positional field to region mapping, see KDNA_AB_Settings.
+		'mapping_single'      => array(),
+		'mapping_digest'      => array(),
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
