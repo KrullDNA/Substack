@@ -126,6 +126,52 @@ class KDNA_AB_API {
 		return $this->request( 'GET', 'templates/' . rawurlencode( $template_id ) . '.json' );
 	}
 
+	/**
+	 * Creates a draft campaign from a template.
+	 *
+	 * Returns the new campaign ID on success. The campaign is created as a draft,
+	 * sending it is a separate call.
+	 *
+	 * @param string $client_id Campaign Monitor client ID.
+	 * @param array  $payload   Campaign payload, including TemplateID and TemplateContent.
+	 * @return string|WP_Error Campaign ID on success.
+	 */
+	public function create_campaign_from_template( $client_id, $payload ) {
+		$result = $this->request( 'POST', 'campaigns/' . rawurlencode( $client_id ) . '/fromtemplate.json', $payload );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		// Campaign Monitor returns the campaign ID as a bare JSON string.
+		return is_string( $result ) ? $result : (string) $result;
+	}
+
+	/**
+	 * Sends a draft campaign.
+	 *
+	 * @param string $campaign_id       Campaign ID.
+	 * @param string $confirmation_email Address, or comma separated addresses, for the send confirmation.
+	 * @param string $send_date          Send date, or Immediately.
+	 * @return true|WP_Error True on success.
+	 */
+	public function send_campaign( $campaign_id, $confirmation_email, $send_date = 'Immediately' ) {
+		$result = $this->request(
+			'POST',
+			'campaigns/' . rawurlencode( $campaign_id ) . '/send.json',
+			array(
+				'ConfirmationEmail' => $confirmation_email,
+				'SendDate'          => $send_date,
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
 	/*
 	 * -----------------------------------------------------------------------
 	 * Core request

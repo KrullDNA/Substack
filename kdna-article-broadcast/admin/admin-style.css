@@ -331,3 +331,38 @@ table.kdna-ab-preview__table {
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	font-size: 12px;
 }
+
+/* Stage 5, sending modes. */
+
+.kdna-ab-modes {
+	border: 0;
+	padding: 0;
+	margin: 0 0 var(--kdna-ab-gap);
+}
+
+.kdna-ab-mode {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 10px 12px;
+	margin-bottom: 8px;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.kdna-ab-mode input {
+	margin-top: 3px;
+}
+
+.kdna-ab-mode strong {
+	display: block;
+}
+
+.kdna-ab-mode em {
+	display: block;
+	font-style: normal;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+	margin-top: 2px;
+}

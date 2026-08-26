@@ -57,7 +57,9 @@
 
 		var meta = editor.meta;
 		var status = meta[ KEYS.status ] || '';
-		var locked = 'sent' === status;
+		// A campaign exists once a campaign ID is stored, which locks the post
+		// against creating a second campaign, whatever the exact status.
+		var locked = '' !== ( meta[ KEYS.campaignId ] || '' );
 
 		/**
 		 * Merges one or more meta values into the post.
@@ -106,6 +108,12 @@
 			var time = parseInt( meta[ KEYS.statusTime ] || '0', 10 );
 			if ( time ) {
 				detail = I18N.sentPrefix + ' ' + dateI18n( M.dateFormat, new Date( time * 1000 ) );
+			}
+		} else if ( 'draft' === status ) {
+			label = LABELS.draft;
+			var drafted = parseInt( meta[ KEYS.statusTime ] || '0', 10 );
+			if ( drafted ) {
+				detail = I18N.draftPrefix + ' ' + dateI18n( M.dateFormat, new Date( drafted * 1000 ) );
 			}
 		} else if ( 'failed' === status ) {
 			label = LABELS.failed;

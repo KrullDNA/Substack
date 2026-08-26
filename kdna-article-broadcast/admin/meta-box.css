@@ -54,7 +54,8 @@
 }
 
 .kdna-ab-mb-status--held,
-.kdna-ab-mb-status--queued {
+.kdna-ab-mb-status--queued,
+.kdna-ab-mb-status--draft {
 	background: var(--kdna-ab-mb-held-bg);
 	color: var(--kdna-ab-mb-held-ink);
 }

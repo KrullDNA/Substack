@@ -90,6 +90,26 @@ This build is delivered in stages. Each stage is individually testable.
 * A settings preview panel assembles a chosen or the most recent post, and a
   post with no intro and no repeater rows is blocked with a clear warning.
 
+**Stage 5, single article send (this release)**
+
+* Publishing a flagged post creates a campaign in Campaign Monitor from the
+  mapped single article template, hooked on transition_post_status so manual
+  and scheduled publishing behave identically.
+* Guard conditions: post type is post, the send checkbox is ticked, the post
+  has no campaign yet, and the plugin is fully configured. A misconfiguration
+  is reported on the post rather than failing silently.
+* Three global send modes: draft only and notify (the default), auto-send
+  immediately, or auto-send after a hold window.
+* Hold window, configurable, default 30 minutes, implemented as a single cron
+  event with a working cancel link in the notification email that leaves the
+  draft intact.
+* A send lock is written to post meta on success (campaign ID, status, mode
+  and timestamp), so updating an already sent post never creates a second
+  campaign.
+* Admin notification email on creation, with the campaign ID and an open in
+  Campaign Monitor link, plus the cancel link for a held send.
+* A Sending settings card for the mode, hold window and notification address.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -124,3 +144,6 @@ authentication salts, and it is never sent back to the browser.
   repeater decoding, teaser generation, entity conversion, three level image
   fallback, KDNA Reading Time lookup, UTM builder, and the settings preview
   panel with an empty-content block.
+* Stage 5: single article send on publish, three send modes with draft as the
+  default, cron hold window with a working cancel, the post meta send lock,
+  and the admin notification email.

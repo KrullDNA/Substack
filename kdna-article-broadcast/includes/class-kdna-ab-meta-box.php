@@ -156,6 +156,7 @@ class KDNA_AB_Meta_Box {
 			'not_sent' => __( 'Not sent', 'kdna-article-broadcast' ),
 			'queued'   => __( 'Queued', 'kdna-article-broadcast' ),
 			'held'     => __( 'Held, waiting for the hold window', 'kdna-article-broadcast' ),
+			'draft'    => __( 'Draft created in Campaign Monitor', 'kdna-article-broadcast' ),
 			'sent'     => __( 'Sent', 'kdna-article-broadcast' ),
 			'failed'   => __( 'Failed', 'kdna-article-broadcast' ),
 		);
@@ -168,19 +169,29 @@ class KDNA_AB_Meta_Box {
 	 * @return array With state, label, detail, locked and campaign_id.
 	 */
 	public static function get_status_display( $post_id ) {
-		$status  = (string) get_post_meta( $post_id, self::META_STATUS, true );
-		$state   = ( '' === $status ) ? 'not_sent' : $status;
-		$labels  = self::status_labels();
-		$label   = isset( $labels[ $state ] ) ? $labels[ $state ] : $labels['not_sent'];
-		$detail  = '';
-		$time    = (int) get_post_meta( $post_id, self::META_STATUS_TIME, true );
+		$status      = (string) get_post_meta( $post_id, self::META_STATUS, true );
+		$state       = ( '' === $status ) ? 'not_sent' : $status;
+		$labels      = self::status_labels();
+		$label       = isset( $labels[ $state ] ) ? $labels[ $state ] : $labels['not_sent'];
+		$detail      = '';
+		$time        = (int) get_post_meta( $post_id, self::META_STATUS_TIME, true );
+		$campaign_id = (string) get_post_meta( $post_id, self::META_CAMPAIGN_ID, true );
+		$format      = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 
 		if ( 'sent' === $state ) {
 			if ( $time ) {
 				$detail = sprintf(
 					/* translators: %s: formatted date and time of the send. */
 					__( 'Sent on %s', 'kdna-article-broadcast' ),
-					wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $time )
+					wp_date( $format, $time )
+				);
+			}
+		} elseif ( 'draft' === $state ) {
+			if ( $time ) {
+				$detail = sprintf(
+					/* translators: %s: formatted date and time the draft was created. */
+					__( 'Draft created on %s. Open it in Campaign Monitor to send.', 'kdna-article-broadcast' ),
+					wp_date( $format, $time )
 				);
 			}
 		} elseif ( 'failed' === $state ) {
@@ -189,7 +200,7 @@ class KDNA_AB_Meta_Box {
 			$detail = sprintf(
 				/* translators: %s: formatted date and time the hold window ends. */
 				__( 'Sends at %s unless cancelled', 'kdna-article-broadcast' ),
-				wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $time )
+				wp_date( $format, $time )
 			);
 		}
 
@@ -197,8 +208,9 @@ class KDNA_AB_Meta_Box {
 			'state'       => $state,
 			'label'       => $label,
 			'detail'      => $detail,
-			'locked'      => ( 'sent' === $state ),
-			'campaign_id' => (string) get_post_meta( $post_id, self::META_CAMPAIGN_ID, true ),
+			// A campaign exists, so the post is locked against creating a second one.
+			'locked'      => ( '' !== $campaign_id ),
+			'campaign_id' => $campaign_id,
 		);
 	}
 
@@ -500,6 +512,54 @@ class KDNA_AB_Meta_Box {
 		delete_post_meta( $post_id, self::META_MODE );
 	}
 
+	/**
+	 * Records a created or sent campaign against a post.
+	 *
+	 * This writes the send lock: the campaign ID, the status, the mode used and a
+	 * timestamp. Any previous failure message is cleared.
+	 *
+	 * @param int    $post_id     Post ID.
+	 * @param string $campaign_id Campaign Monitor campaign ID.
+	 * @param string $status      One of draft, held or sent.
+	 * @param string $mode        Send mode used.
+	 * @param int    $time        Timestamp for the status.
+	 * @return void
+	 */
+	public static function record_campaign( $post_id, $campaign_id, $status, $mode, $time ) {
+		update_post_meta( $post_id, self::META_CAMPAIGN_ID, sanitize_text_field( $campaign_id ) );
+		update_post_meta( $post_id, self::META_STATUS, sanitize_text_field( $status ) );
+		update_post_meta( $post_id, self::META_MODE, sanitize_text_field( $mode ) );
+		update_post_meta( $post_id, self::META_STATUS_TIME, (int) $time );
+		delete_post_meta( $post_id, self::META_STATUS_MESSAGE );
+	}
+
+	/**
+	 * Records a simple status change without touching the campaign lock.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $status  Status value.
+	 * @param int    $time    Timestamp for the status.
+	 * @return void
+	 */
+	public static function record_status( $post_id, $status, $time = 0 ) {
+		update_post_meta( $post_id, self::META_STATUS, sanitize_text_field( $status ) );
+		update_post_meta( $post_id, self::META_STATUS_TIME, (int) $time );
+	}
+
+	/**
+	 * Records a failure against a post.
+	 *
+	 * @param int    $post_id Post ID.
+	 * @param string $message Failure message.
+	 * @param int    $time    Timestamp.
+	 * @return void
+	 */
+	public static function record_failure( $post_id, $message, $time ) {
+		update_post_meta( $post_id, self::META_STATUS, 'failed' );
+		update_post_meta( $post_id, self::META_STATUS_MESSAGE, sanitize_text_field( $message ) );
+		update_post_meta( $post_id, self::META_STATUS_TIME, (int) $time );
+	}
+
 	/*
 	 * -----------------------------------------------------------------------
 	 * Assets
@@ -613,6 +673,7 @@ class KDNA_AB_Meta_Box {
 				'ctaHelp'       => __( 'Optional. Leave blank to use the global CTA label from the settings page.', 'kdna-article-broadcast' ),
 				'statusHeading' => __( 'Broadcast status', 'kdna-article-broadcast' ),
 				'sentPrefix'    => __( 'Sent on', 'kdna-article-broadcast' ),
+				'draftPrefix'   => __( 'Draft created on', 'kdna-article-broadcast' ),
 				'sendsPrefix'   => __( 'Sends at', 'kdna-article-broadcast' ),
 				'sendsSuffix'   => __( 'unless cancelled', 'kdna-article-broadcast' ),
 				'campaignLabel' => __( 'Campaign ID', 'kdna-article-broadcast' ),

@@ -140,6 +140,59 @@ class KDNA_AB_Content {
 		);
 	}
 
+	/**
+	 * Turns a stored field mapping into ordered field keys per region type.
+	 *
+	 * Included fields are collected and sorted by their position within each
+	 * type, giving the exact order the values must appear in the positional
+	 * Campaign Monitor template content.
+	 *
+	 * @param array $mapping Stored mapping keyed by field key.
+	 * @param array $fields  Field definition list.
+	 * @return array With singleline, multiline and image arrays of field keys.
+	 */
+	public static function ordered_mapping( $mapping, $fields ) {
+		$mapping = is_array( $mapping ) ? $mapping : array();
+		$by_type = array(
+			'singleline' => array(),
+			'multiline'  => array(),
+			'image'      => array(),
+		);
+
+		foreach ( $fields as $field ) {
+			$key  = $field['key'];
+			$type = $field['type'];
+
+			if ( ! isset( $by_type[ $type ] ) ) {
+				continue;
+			}
+
+			$row = isset( $mapping[ $key ] ) ? $mapping[ $key ] : null;
+
+			if ( is_array( $row ) && ! empty( $row['include'] ) ) {
+				$by_type[ $type ][] = array(
+					'key' => $key,
+					'pos' => isset( $row['position'] ) ? (int) $row['position'] : 1,
+				);
+			}
+		}
+
+		$out = array();
+
+		foreach ( $by_type as $type => $items ) {
+			usort(
+				$items,
+				static function ( $a, $b ) {
+					return $a['pos'] - $b['pos'];
+				}
+			);
+
+			$out[ $type ] = wp_list_pluck( $items, 'key' );
+		}
+
+		return $out;
+	}
+
 	/*
 	 * -----------------------------------------------------------------------
 	 * JetEngine repeater

@@ -104,6 +104,9 @@ class KDNA_AB_Settings {
 		add_action( 'wp_ajax_kdna_ab_get_subfields', array( $this, 'ajax_get_subfields' ) );
 		add_action( 'wp_ajax_kdna_ab_save_content', array( $this, 'ajax_save_content' ) );
 		add_action( 'wp_ajax_kdna_ab_preview_content', array( $this, 'ajax_preview_content' ) );
+
+		// Stage 5.
+		add_action( 'wp_ajax_kdna_ab_save_sending', array( $this, 'ajax_save_sending' ) );
 	}
 
 	/*
@@ -372,6 +375,7 @@ class KDNA_AB_Settings {
 			'typeLabels'  => self::region_type_labels(),
 			'content'     => $this->content_for_display( $settings ),
 			'metaFields'  => $this->list_public_meta_keys(),
+			'sending'     => $this->sending_for_display( $settings ),
 			'i18n'        => array(
 				'testing'       => __( 'Testing connection...', 'kdna-article-broadcast' ),
 				'saving'        => __( 'Saving...', 'kdna-article-broadcast' ),
@@ -387,6 +391,7 @@ class KDNA_AB_Settings {
 				'selectionSaved' => __( 'Selection and mapping saved.', 'kdna-article-broadcast' ),
 				'invalidEmail'  => __( 'Please enter a valid from email address.', 'kdna-article-broadcast' ),
 				'contentSaved'  => __( 'Content settings saved.', 'kdna-article-broadcast' ),
+				'sendingSaved'  => __( 'Sending settings saved.', 'kdna-article-broadcast' ),
 				'previewing'    => __( 'Assembling preview...', 'kdna-article-broadcast' ),
 				'chooseImage'   => __( 'Choose placeholder image', 'kdna-article-broadcast' ),
 				'mediaTitle'    => __( 'Select a placeholder image', 'kdna-article-broadcast' ),
@@ -420,6 +425,21 @@ class KDNA_AB_Settings {
 			'utmMedium'         => (string) $settings['utm_medium'],
 			'utmCampaign'       => (string) $settings['utm_campaign'],
 			'readTimeMetaKey'   => (string) $settings['read_time_meta_key'],
+		);
+	}
+
+	/**
+	 * Shapes the Stage 5 sending settings for the browser.
+	 *
+	 * @param array $settings Full settings array.
+	 * @return array
+	 */
+	private function sending_for_display( $settings ) {
+		return array(
+			'sendMode'    => KDNA_AB_Sender::normalise_mode( $settings['send_mode'] ),
+			'holdWindow'  => (int) $settings['hold_window'],
+			'notifyEmail' => (string) $settings['notify_email'],
+			'adminEmail'  => (string) get_option( 'admin_email' ),
 		);
 	}
 
@@ -1112,6 +1132,49 @@ class KDNA_AB_Settings {
 					'blocked'   => false,
 					'assembled' => $assembled,
 				)
+			)
+		);
+	}
+
+	/*
+	 * -----------------------------------------------------------------------
+	 * Stage 5 AJAX handler
+	 * -----------------------------------------------------------------------
+	 */
+
+	/**
+	 * AJAX: saves the sending settings.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_sending() {
+		$this->verify_request();
+
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$in  = json_decode( $raw, true );
+
+		if ( ! is_array( $in ) ) {
+			wp_send_json_error( array( 'message' => __( 'The settings could not be read. Please try again.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$notify = isset( $in['notifyEmail'] ) ? sanitize_email( $in['notifyEmail'] ) : '';
+
+		if ( '' !== $notify && ! is_email( $notify ) ) {
+			wp_send_json_error( array( 'message' => __( 'Please enter a valid notification email address.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		$settings = $this->get_settings();
+
+		$settings['send_mode']    = KDNA_AB_Sender::normalise_mode( isset( $in['sendMode'] ) ? $in['sendMode'] : 'draft' );
+		$settings['hold_window']  = isset( $in['holdWindow'] ) ? max( 1, absint( $in['holdWindow'] ) ) : 30;
+		$settings['notify_email'] = $notify;
+
+		update_option( KDNA_AB_OPTION, $settings );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Sending settings saved.', 'kdna-article-broadcast' ),
+				'sending' => $this->sending_for_display( $settings ),
 			)
 		);
 	}

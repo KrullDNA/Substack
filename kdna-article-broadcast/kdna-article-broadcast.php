@@ -101,7 +101,8 @@ register_activation_hook( __FILE__, 'kdna_ab_activate' );
  * @return void
  */
 function kdna_ab_deactivate() {
-	// Reserved for later stages, for example clearing scheduled cron events.
+	// Clear any scheduled hold window sends so nothing fires while inactive.
+	wp_clear_scheduled_hook( 'kdna_ab_hold_send' );
 }
 register_deactivation_hook( __FILE__, 'kdna_ab_deactivate' );
 
@@ -155,6 +156,11 @@ function kdna_ab_default_settings() {
 		'utm_campaign'        => '{slug}',
 		'read_time_meta_key'  => '',
 
+		// Stage 5, single article send.
+		'send_mode'           => 'draft',
+		'hold_window'         => 30,
+		'notify_email'        => '',
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
@@ -195,6 +201,10 @@ function kdna_ab_bootstrap() {
 
 	// The content engine registers the email image size on both admin and front.
 	KDNA_AB_Content::instance();
+
+	// The sender hooks the publish transition and the hold window cron, which
+	// can fire on the front end and during cron, so it loads everywhere.
+	KDNA_AB_Sender::instance();
 
 	// Admin only settings screen.
 	if ( is_admin() ) {

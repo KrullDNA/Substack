@@ -101,6 +101,11 @@
 			previewData: null,
 			previewPostId: null,
 
+			// Stage 5 state.
+			sending: JSON.parse( JSON.stringify( kdnaAb.sending || {} ) ),
+			savingSending: false,
+			sendingResult: null,
+
 			/**
 			 * True while a Stage 1 request is in flight.
 			 *
@@ -670,6 +675,44 @@
 				} );
 
 				frame.open();
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 5, sending
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Saves the sending settings.
+			 *
+			 * @return {void}
+			 */
+			saveSending: function () {
+				if ( this.savingSending ) {
+					return;
+				}
+
+				this.savingSending = true;
+				this.sendingResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				request( 'kdna_ab_save_sending', { payload: JSON.stringify( this.sending ) } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.sendingResult = { type: 'success', message: payload.data.message };
+							if ( payload.data.sending ) {
+								this.sending = Object.assign( {}, this.sending, payload.data.sending );
+							}
+						} else {
+							this.sendingResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.sendingResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.savingSending = false;
+					}.bind( this ) );
 			},
 
 			/*

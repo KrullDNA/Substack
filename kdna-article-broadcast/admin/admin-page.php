@@ -328,6 +328,73 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 
 	<?php /* ------------------------------------------------------------------ */ ?>
+	<?php /* Stage 5, sending.                                                 */ ?>
+	<?php /* ------------------------------------------------------------------ */ ?>
+
+	<div class="kdna-ab-card">
+		<h2 class="kdna-ab-card__heading"><?php esc_html_e( 'Sending', 'kdna-article-broadcast' ); ?></h2>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'How a broadcast behaves when a flagged post is published. Publishing never sends without the Send to subscribers box ticked on the post.', 'kdna-article-broadcast' ); ?>
+		</p>
+
+		<form class="kdna-ab-form" @submit.prevent="saveSending()">
+
+			<fieldset class="kdna-ab-modes">
+				<legend class="kdna-ab-field__label"><?php esc_html_e( 'Behaviour on publish', 'kdna-article-broadcast' ); ?></legend>
+
+				<label class="kdna-ab-mode">
+					<input type="radio" value="draft" x-model="sending.sendMode" />
+					<span>
+						<strong><?php esc_html_e( 'Draft only', 'kdna-article-broadcast' ); ?></strong>
+						<em><?php esc_html_e( 'Create the campaign as a draft and email you a link. You send it in Campaign Monitor. This is the default.', 'kdna-article-broadcast' ); ?></em>
+					</span>
+				</label>
+
+				<label class="kdna-ab-mode">
+					<input type="radio" value="hold" x-model="sending.sendMode" />
+					<span>
+						<strong><?php esc_html_e( 'Auto-send after a hold window', 'kdna-article-broadcast' ); ?></strong>
+						<em><?php esc_html_e( 'Create the draft, then send automatically after the hold window unless you cancel it.', 'kdna-article-broadcast' ); ?></em>
+					</span>
+				</label>
+
+				<label class="kdna-ab-mode">
+					<input type="radio" value="auto" x-model="sending.sendMode" />
+					<span>
+						<strong><?php esc_html_e( 'Auto-send immediately', 'kdna-article-broadcast' ); ?></strong>
+						<em><?php esc_html_e( 'Create the campaign and send it to subscribers straight away.', 'kdna-article-broadcast' ); ?></em>
+					</span>
+				</label>
+			</fieldset>
+
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field" x-show="sending.sendMode === 'hold'" x-cloak>
+					<label class="kdna-ab-field__label" for="kdna-ab-hold"><?php esc_html_e( 'Hold window (minutes)', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-hold" type="number" min="1" step="1" class="small-text" x-model.number="sending.holdWindow" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Default 30. The send can be cancelled from the notification email during this window.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-notify"><?php esc_html_e( 'Notification email', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-notify" type="email" class="kdna-ab-input" x-model="sending.notifyEmail" :placeholder="sending.adminEmail" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Where campaign notifications are sent. Leave blank to use the site admin email.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-actions">
+				<button type="submit" class="button button-primary" :disabled="savingSending">
+					<span x-show="! savingSending"><?php esc_html_e( 'Save sending settings', 'kdna-article-broadcast' ); ?></span>
+					<span x-show="savingSending" x-cloak><?php esc_html_e( 'Saving...', 'kdna-article-broadcast' ); ?></span>
+				</button>
+			</div>
+
+			<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (sendingResult ? sendingResult.type : 'info')" x-show="sendingResult" x-cloak role="status" aria-live="polite">
+				<span x-text="sendingResult ? sendingResult.message : ''"></span>
+			</div>
+		</form>
+	</div>
+
+	<?php /* ------------------------------------------------------------------ */ ?>
 	<?php /* Stage 4, content assembly.                                        */ ?>
 	<?php /* ------------------------------------------------------------------ */ ?>
 
@@ -529,7 +596,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php
 		printf(
 			/* translators: %s: plugin version number. */
-			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 4 complete.', 'kdna-article-broadcast' ),
+			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 5 complete.', 'kdna-article-broadcast' ),
 			esc_html( KDNA_AB_VERSION )
 		);
 		?>
