@@ -52,6 +52,22 @@ This build is delivered in stages. Each stage is individually testable.
   preview shows the resulting region order. The mapping is saved and survives a
   reload, so changing a template later means adjusting numbers, not code.
 
+**Stage 3, post editor controls (this release)**
+
+* An Article Broadcast panel on the post editor, Posts post type only, working
+  in both editors: a document setting panel in Gutenberg and a side meta box in
+  the Classic editor.
+* Send to subscribers checkbox, unticked by default on every new post.
+* Email subject field, pre-filled from the post title and updating live until
+  it is edited, after which it stops tracking.
+* Optional preview text field and optional teaser override field.
+* Status readout: not sent, queued, held, sent with the date and time, or
+  failed with the reason.
+* Unlock and resend button, shown only once a post has been sent, with a
+  confirmation prompt.
+* The post meta keys are registered once and shared by both editors, and are
+  fixed so the future Klaviyo edition can carry across send history.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -79,3 +95,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 2: client, list and template selection with AJAX dropdowns, one hour
   transient caching with a manual refresh, and the positional template region
   mapping panel.
+* Stage 3: the Article Broadcast post editor panel, Posts only, in both
+  Gutenberg and Classic, with the send checkbox, title tracking subject,
+  preview and teaser fields, status readout and unlock and resend.

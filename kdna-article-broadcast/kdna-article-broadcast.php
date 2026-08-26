@@ -155,7 +155,11 @@ function kdna_ab_default_settings() {
 function kdna_ab_bootstrap() {
 	load_plugin_textdomain( 'kdna-article-broadcast', false, dirname( KDNA_AB_BASENAME ) . '/languages' );
 
-	// Admin only for Stage 1. Front end features arrive in later stages.
+	// The meta box registers post meta, which must happen on both the admin and
+	// the front end so the REST API and later send logic can read it.
+	KDNA_AB_Meta_Box::instance();
+
+	// Admin only settings screen.
 	if ( is_admin() ) {
 		KDNA_AB_Settings::instance();
 	}
