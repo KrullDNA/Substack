@@ -1,0 +1,160 @@
+/**
+ * KDNA Article Broadcast, admin settings styling.
+ *
+ * Scoped under .kdna-ab-wrap so nothing leaks into the rest of wp-admin.
+ * Values are driven by kdna- prefixed CSS custom properties.
+ *
+ * @package KDNA_Article_Broadcast
+ */
+
+.kdna-ab-wrap {
+	--kdna-ab-accent: #2271b1;
+	--kdna-ab-accent-ink: #135e96;
+	--kdna-ab-border: #dcdcde;
+	--kdna-ab-surface: #ffffff;
+	--kdna-ab-muted: #646970;
+	--kdna-ab-radius: 8px;
+	--kdna-ab-gap: 16px;
+	--kdna-ab-success-bg: #edfaef;
+	--kdna-ab-success-border: #46b450;
+	--kdna-ab-success-ink: #1a6c2b;
+	--kdna-ab-error-bg: #fcf0f1;
+	--kdna-ab-error-border: #d63638;
+	--kdna-ab-error-ink: #9a1b1d;
+	--kdna-ab-info-bg: #f0f6fc;
+	--kdna-ab-info-border: #72aee6;
+	--kdna-ab-info-ink: #0a4b78;
+}
+
+/* Hide Alpine controlled elements until Alpine is ready. */
+.kdna-ab-wrap [x-cloak] {
+	display: none !important;
+}
+
+.kdna-ab-title {
+	margin-bottom: 4px;
+}
+
+.kdna-ab-subtitle {
+	margin-top: 0;
+	color: var(--kdna-ab-muted);
+	max-width: 640px;
+}
+
+.kdna-ab-card {
+	background: var(--kdna-ab-surface);
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: var(--kdna-ab-radius);
+	padding: 24px;
+	margin-top: var(--kdna-ab-gap);
+	max-width: 720px;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.kdna-ab-card__heading {
+	margin-top: 0;
+	margin-bottom: 4px;
+}
+
+.kdna-ab-card__intro {
+	margin-top: 0;
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-field {
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-field__label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.kdna-ab-input-group {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.kdna-ab-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.kdna-ab-input-group__toggle {
+	flex: 0 0 auto;
+	min-width: 64px;
+}
+
+.kdna-ab-field__hint {
+	margin: 6px 0 0;
+	color: var(--kdna-ab-muted);
+	font-size: 12px;
+}
+
+.kdna-ab-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-notice {
+	border-left: 4px solid var(--kdna-ab-info-border);
+	background: var(--kdna-ab-info-bg);
+	color: var(--kdna-ab-info-ink);
+	padding: 10px 14px;
+	border-radius: 4px;
+}
+
+.kdna-ab-notice--success {
+	border-left-color: var(--kdna-ab-success-border);
+	background: var(--kdna-ab-success-bg);
+	color: var(--kdna-ab-success-ink);
+}
+
+.kdna-ab-notice--error {
+	border-left-color: var(--kdna-ab-error-border);
+	background: var(--kdna-ab-error-bg);
+	color: var(--kdna-ab-error-ink);
+}
+
+.kdna-ab-notice--info {
+	border-left-color: var(--kdna-ab-info-border);
+	background: var(--kdna-ab-info-bg);
+	color: var(--kdna-ab-info-ink);
+}
+
+.kdna-ab-connection {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-top: var(--kdna-ab-gap);
+	padding-top: var(--kdna-ab-gap);
+	border-top: 1px solid var(--kdna-ab-border);
+}
+
+.kdna-ab-connection__badge {
+	display: inline-block;
+	background: var(--kdna-ab-success-bg);
+	color: var(--kdna-ab-success-ink);
+	border: 1px solid var(--kdna-ab-success-border);
+	border-radius: 999px;
+	padding: 2px 12px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.kdna-ab-connection__meta {
+	color: var(--kdna-ab-muted);
+	font-size: 13px;
+}
+
+.kdna-ab-footnote {
+	margin-top: var(--kdna-ab-gap);
+	color: var(--kdna-ab-muted);
+	font-size: 12px;
+}

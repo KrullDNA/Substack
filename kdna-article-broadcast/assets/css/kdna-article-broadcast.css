@@ -1,0 +1,11 @@
+/**
+ * KDNA Article Broadcast, front end styling.
+ *
+ * The signup and archive widgets add their styles here in later stages. All
+ * front end styling is driven by kdna- prefixed CSS custom properties, and this
+ * file is only enqueued where a widget is actually present.
+ *
+ * Populated from Stage 10 onwards.
+ *
+ * @package KDNA_Article_Broadcast
+ */

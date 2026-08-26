@@ -1,0 +1,62 @@
+=== KDNA Article Broadcast (Campaign Monitor) ===
+Contributors: krulldna
+Tags: campaign monitor, newsletter, email, elementor, broadcast
+Requires at least: 6.3
+Tested up to: 6.6
+Requires PHP: 7.4
+Stable tag: 1.0.0
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+
+Connects a WordPress blog to Campaign Monitor so publishing an article can create a ready to send email campaign.
+
+== Description ==
+
+KDNA Article Broadcast connects a WordPress blog to Campaign Monitor so that
+publishing an article can create a ready to send email campaign, without anyone
+rebuilding the same email by hand every week. It supports two send modes, a
+single article at publish and a weekly digest, and provides Elementor widgets
+for signup and for a newsletter archive.
+
+The plugin does not design emails. The design lives inside Campaign Monitor as a
+template, and the plugin fills that template with content pulled from the post.
+
+This build is delivered in stages. Each stage is individually testable.
+
+**Stage 1, plugin foundation and API connection (this release)**
+
+* Main plugin file with activation and deactivation hooks and class autoloading.
+* Settings page at Settings > KDNA Article Broadcast, built with Alpine.js for
+  the interactive parts.
+* Campaign Monitor API key field, stored encrypted at rest.
+* A shared API wrapper class handling authentication, timeouts, error codes and
+  rate limit responses, used by every later stage.
+* A Test connection button that performs a real GET request to the clients
+  endpoint and reports the actual API response, not a format check.
+* A Save that only writes settings once the key has been validated against the
+  live API.
+
+== Installation ==
+
+1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
+2. Activate the plugin through the Plugins screen in WordPress.
+3. Go to Settings > KDNA Article Broadcast.
+4. Enter your Campaign Monitor API key, press Test connection, then Save.
+
+== Frequently Asked Questions ==
+
+= Where do I get an API key? =
+
+Log in to Campaign Monitor, open Account settings, then API keys. The key needs
+permission to create and send campaigns and to import subscribers.
+
+= Is my API key stored safely? =
+
+Yes. The key is encrypted at rest using a key derived from your site
+authentication salts, and it is never sent back to the browser.
+
+== Changelog ==
+
+= 1.0.0 =
+* Stage 1: plugin foundation, settings page, encrypted API key storage, shared
+  Campaign Monitor API wrapper, and a genuine round trip Test connection button.
