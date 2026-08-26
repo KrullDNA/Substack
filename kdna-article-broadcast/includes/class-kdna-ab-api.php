@@ -127,6 +127,16 @@ class KDNA_AB_API {
 	}
 
 	/**
+	 * Fetches a list's statistics, including the active subscriber count.
+	 *
+	 * @param string $list_id Campaign Monitor list ID.
+	 * @return array|WP_Error
+	 */
+	public function get_list_stats( $list_id ) {
+		return $this->request( 'GET', 'lists/' . rawurlencode( $list_id ) . '/stats.json' );
+	}
+
+	/**
 	 * Creates a draft campaign from a template.
 	 *
 	 * Returns the new campaign ID on success. The campaign is created as a draft,

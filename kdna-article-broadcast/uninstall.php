@@ -19,6 +19,15 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 $kdna_ab_settings = get_option( 'kdna_ab_settings' );
 
 if ( is_array( $kdna_ab_settings ) && ! empty( $kdna_ab_settings['delete_on_uninstall'] ) ) {
+	global $wpdb;
+
 	delete_option( 'kdna_ab_settings' );
 	delete_option( 'kdna_ab_version' );
+	delete_option( 'kdna_ab_db_version' );
+
+	// Remove the send log table. This happens on uninstall only, never on
+	// deactivate, and only when the delete on uninstall setting is on.
+	$kdna_ab_table = $wpdb->prefix . 'kdna_ab_send_log';
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$wpdb->query( "DROP TABLE IF EXISTS {$kdna_ab_table}" );
 }

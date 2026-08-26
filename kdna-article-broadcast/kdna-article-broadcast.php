@@ -89,6 +89,14 @@ function kdna_ab_activate() {
 	}
 
 	update_option( KDNA_AB_VERSION_OPTION, KDNA_AB_VERSION );
+
+	// Create the send log table.
+	KDNA_AB_Log::create_table();
+
+	// Schedule the daily log purge.
+	if ( ! wp_next_scheduled( KDNA_AB_Log::PURGE_HOOK ) ) {
+		wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', KDNA_AB_Log::PURGE_HOOK );
+	}
 }
 register_activation_hook( __FILE__, 'kdna_ab_activate' );
 
@@ -103,6 +111,10 @@ register_activation_hook( __FILE__, 'kdna_ab_activate' );
 function kdna_ab_deactivate() {
 	// Clear any scheduled hold window sends so nothing fires while inactive.
 	wp_clear_scheduled_hook( 'kdna_ab_hold_send' );
+
+	// Clear the daily log purge. The log table itself is left in place, it is
+	// only removed on uninstall.
+	wp_clear_scheduled_hook( 'kdna_ab_purge_log' );
 }
 register_deactivation_hook( __FILE__, 'kdna_ab_deactivate' );
 
@@ -164,6 +176,9 @@ function kdna_ab_default_settings() {
 		// Stage 6, test sends. Up to four standing test addresses.
 		'test_addresses'      => array(),
 
+		// Stage 7, send log retention. Zero keeps everything.
+		'log_retention_months' => 0,
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
@@ -208,6 +223,9 @@ function kdna_ab_bootstrap() {
 	// The sender hooks the publish transition and the hold window cron, which
 	// can fire on the front end and during cron, so it loads everywhere.
 	KDNA_AB_Sender::instance();
+
+	// The send log runs the purge cron everywhere and the admin screen in admin.
+	KDNA_AB_Log::instance();
 
 	// Admin only settings screen.
 	if ( is_admin() ) {

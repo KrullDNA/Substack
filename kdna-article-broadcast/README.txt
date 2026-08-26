@@ -123,6 +123,22 @@ This build is delivered in stages. Each stage is individually testable.
   post can still be broadcast normally.
 * Inline AJAX feedback in the panel, no page reload.
 
+**Stage 7, send log (this release)**
+
+* A custom database table, created on activation, one row per broadcast
+  attempt, with post ID, post title, type, status, campaign ID, list ID,
+  recipients estimate, mode, attempt number, message and timestamp.
+* Every send, hold, test and failure is logged with the correct status.
+* An admin screen at Settings > Article Broadcast Log built on WP_List_Table,
+  with filtering by status and type, search, sortable columns, pagination and
+  bulk delete.
+* Row actions: view in Campaign Monitor, retry a failed row, cancel a held
+  row, and view the full API response for a failure.
+* Configurable retention, default keep everything, with an optional purge of
+  rows older than a set number of months, run by a daily cron.
+* The table is removed on uninstall only when the delete on uninstall setting
+  is on, never on deactivate.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -163,3 +179,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 6: test sends via the Campaign Monitor preview endpoint, a Send test
   button in both editors, standing test addresses, no send lock, inline AJAX
   feedback.
+* Stage 7: the send log, a custom table logging every attempt, and a
+  WP_List_Table admin screen with filtering, search, pagination, retention and
+  the view, retry, cancel and view response row actions.
