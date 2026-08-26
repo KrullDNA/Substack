@@ -172,6 +172,51 @@ class KDNA_AB_API {
 		return true;
 	}
 
+	/**
+	 * Sends a preview of a draft campaign to named recipients.
+	 *
+	 * This delivers the real rendered campaign to the given addresses, which is
+	 * how a test send works.
+	 *
+	 * @param string $campaign_id Campaign ID.
+	 * @param array  $recipients  Up to five recipient email addresses.
+	 * @return true|WP_Error True on success.
+	 */
+	public function send_preview( $campaign_id, $recipients ) {
+		$result = $this->request(
+			'POST',
+			'campaigns/' . rawurlencode( $campaign_id ) . '/sendpreview.json',
+			array(
+				'PreviewRecipients' => array_values( $recipients ),
+				'Personalize'       => 'Fallback',
+			)
+		);
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Deletes a draft campaign.
+	 *
+	 * Used to remove the temporary draft created for a test send.
+	 *
+	 * @param string $campaign_id Campaign ID.
+	 * @return true|WP_Error True on success.
+	 */
+	public function delete_campaign( $campaign_id ) {
+		$result = $this->request( 'DELETE', 'campaigns/' . rawurlencode( $campaign_id ) . '.json' );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return true;
+	}
+
 	/*
 	 * -----------------------------------------------------------------------
 	 * Core request

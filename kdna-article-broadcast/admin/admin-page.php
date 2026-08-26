@@ -381,6 +381,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</div>
 			</div>
 
+			<div class="kdna-ab-field">
+				<label class="kdna-ab-field__label" for="kdna-ab-test-addresses"><?php esc_html_e( 'Standing test addresses', 'kdna-article-broadcast' ); ?></label>
+				<textarea id="kdna-ab-test-addresses" class="widefat kdna-ab-input" rows="3" x-model="sending.testAddresses"></textarea>
+				<span class="kdna-ab-field__hint"><?php esc_html_e( 'Up to four addresses, one per line. A test send goes to you plus these. The editing user is always included.', 'kdna-article-broadcast' ); ?></span>
+			</div>
+
 			<div class="kdna-ab-actions">
 				<button type="submit" class="button button-primary" :disabled="savingSending">
 					<span x-show="! savingSending"><?php esc_html_e( 'Save sending settings', 'kdna-article-broadcast' ); ?></span>

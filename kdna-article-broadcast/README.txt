@@ -110,6 +110,19 @@ This build is delivered in stages. Each stage is individually testable.
   Campaign Monitor link, plus the cancel link for a held send.
 * A Sending settings card for the mode, hold window and notification address.
 
+**Stage 6, test sends (this release)**
+
+* A Send test button in the Article Broadcast panel, in both editors, always
+  available including on an unpublished draft.
+* Recipients are the editing user plus up to four standing test addresses set
+  in the Sending card.
+* Uses the Campaign Monitor campaign preview endpoint, which delivers the real
+  rendered email. A temporary draft is created, previewed to the recipients,
+  then deleted, so nothing is left behind.
+* A test never sets the send lock and never counts as a real send, so a tested
+  post can still be broadcast normally.
+* Inline AJAX feedback in the panel, no page reload.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -147,3 +160,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 5: single article send on publish, three send modes with draft as the
   default, cron hold window with a working cancel, the post meta send lock,
   and the admin notification email.
+* Stage 6: test sends via the Campaign Monitor preview endpoint, a Send test
+  button in both editors, standing test addresses, no send lock, inline AJAX
+  feedback.

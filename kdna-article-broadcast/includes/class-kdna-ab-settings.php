@@ -435,11 +435,14 @@ class KDNA_AB_Settings {
 	 * @return array
 	 */
 	private function sending_for_display( $settings ) {
+		$test = isset( $settings['test_addresses'] ) && is_array( $settings['test_addresses'] ) ? $settings['test_addresses'] : array();
+
 		return array(
-			'sendMode'    => KDNA_AB_Sender::normalise_mode( $settings['send_mode'] ),
-			'holdWindow'  => (int) $settings['hold_window'],
-			'notifyEmail' => (string) $settings['notify_email'],
-			'adminEmail'  => (string) get_option( 'admin_email' ),
+			'sendMode'      => KDNA_AB_Sender::normalise_mode( $settings['send_mode'] ),
+			'holdWindow'    => (int) $settings['hold_window'],
+			'notifyEmail'   => (string) $settings['notify_email'],
+			'adminEmail'    => (string) get_option( 'admin_email' ),
+			'testAddresses' => implode( "\n", $test ),
 		);
 	}
 
@@ -1168,6 +1171,20 @@ class KDNA_AB_Settings {
 		$settings['send_mode']    = KDNA_AB_Sender::normalise_mode( isset( $in['sendMode'] ) ? $in['sendMode'] : 'draft' );
 		$settings['hold_window']  = isset( $in['holdWindow'] ) ? max( 1, absint( $in['holdWindow'] ) ) : 30;
 		$settings['notify_email'] = $notify;
+
+		// Up to four standing test addresses, split on commas or new lines.
+		$test_raw   = isset( $in['testAddresses'] ) ? (string) $in['testAddresses'] : '';
+		$candidates = preg_split( '/[\s,]+/', $test_raw, -1, PREG_SPLIT_NO_EMPTY );
+		$valid      = array();
+
+		foreach ( (array) $candidates as $candidate ) {
+			$email = sanitize_email( $candidate );
+			if ( '' !== $email && is_email( $email ) && ! in_array( $email, $valid, true ) ) {
+				$valid[] = $email;
+			}
+		}
+
+		$settings['test_addresses'] = array_slice( $valid, 0, 4 );
 
 		update_option( KDNA_AB_OPTION, $settings );
 

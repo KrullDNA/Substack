@@ -350,6 +350,112 @@ class KDNA_AB_Sender {
 
 	/*
 	 * -----------------------------------------------------------------------
+	 * Test sends
+	 * -----------------------------------------------------------------------
+	 */
+
+	/**
+	 * Sends a test of a post to the test recipients.
+	 *
+	 * A temporary draft campaign is created, the real rendered preview is sent to
+	 * the recipients, then the temporary draft is deleted. This never sets the
+	 * send lock and never records a real send.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array|WP_Error Recipients on success, WP_Error on failure.
+	 */
+	public static function send_test( $post_id ) {
+		$post_id = (int) $post_id;
+
+		$missing = self::configuration_gaps();
+
+		if ( ! empty( $missing ) ) {
+			return new WP_Error(
+				'kdna_ab_not_configured',
+				sprintf(
+					/* translators: %s: comma separated list of missing settings. */
+					__( 'The plugin is not fully configured. Missing: %s.', 'kdna-article-broadcast' ),
+					implode( ', ', $missing )
+				)
+			);
+		}
+
+		$recipients = self::test_recipients();
+
+		if ( empty( $recipients ) ) {
+			return new WP_Error( 'kdna_ab_no_recipients', __( 'There are no valid test recipients. Add a test address in the settings.', 'kdna-article-broadcast' ) );
+		}
+
+		$assembled = KDNA_AB_Content::assemble( $post_id );
+
+		if ( is_wp_error( $assembled ) ) {
+			return $assembled;
+		}
+
+		$settings = kdna_ab_get_settings();
+		$payload  = self::build_payload( $post_id, $assembled, $settings );
+
+		// A distinct name so a test draft is easy to spot if cleanup ever fails.
+		$payload['Name'] = sprintf( '[TEST] %1$s (%2$s)', wp_strip_all_tags( get_the_title( $post_id ) ), wp_date( 'Y-m-d H:i:s' ) );
+
+		$api         = kdna_ab_api();
+		$campaign_id = $api->create_campaign_from_template( $settings['client_id'], $payload );
+
+		if ( is_wp_error( $campaign_id ) ) {
+			return $campaign_id;
+		}
+
+		$campaign_id = trim( (string) $campaign_id );
+
+		if ( '' === $campaign_id ) {
+			return new WP_Error( 'kdna_ab_no_campaign', __( 'Campaign Monitor did not return a campaign ID for the test.', 'kdna-article-broadcast' ) );
+		}
+
+		$preview = $api->send_preview( $campaign_id, $recipients );
+
+		// Remove the temporary draft whether or not the preview succeeded.
+		$api->delete_campaign( $campaign_id );
+
+		if ( is_wp_error( $preview ) ) {
+			return $preview;
+		}
+
+		return array( 'recipients' => $recipients );
+	}
+
+	/**
+	 * Returns the test recipients: the current user, plus the standing addresses.
+	 *
+	 * Campaign Monitor accepts up to five preview recipients, so the list is
+	 * capped.
+	 *
+	 * @return array
+	 */
+	public static function test_recipients() {
+		$recipients = array();
+
+		$current = wp_get_current_user();
+
+		if ( $current && is_email( $current->user_email ) ) {
+			$recipients[] = $current->user_email;
+		}
+
+		$settings = kdna_ab_get_settings();
+		$standing = isset( $settings['test_addresses'] ) && is_array( $settings['test_addresses'] ) ? $settings['test_addresses'] : array();
+
+		foreach ( $standing as $address ) {
+			if ( is_email( $address ) ) {
+				$recipients[] = $address;
+			}
+		}
+
+		$recipients = array_values( array_unique( $recipients ) );
+
+		return array_slice( $recipients, 0, 5 );
+	}
+
+	/*
+	 * -----------------------------------------------------------------------
 	 * Payload
 	 * -----------------------------------------------------------------------
 	 */

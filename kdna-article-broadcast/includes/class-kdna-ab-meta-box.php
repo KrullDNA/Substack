@@ -51,6 +51,11 @@ class KDNA_AB_Meta_Box {
 	const UNLOCK_NONCE = 'kdna_ab_unlock';
 
 	/**
+	 * Nonce action for the test send AJAX request.
+	 */
+	const TEST_NONCE = 'kdna_ab_test';
+
+	/**
 	 * Singleton instance.
 	 *
 	 * @var KDNA_AB_Meta_Box|null
@@ -80,6 +85,38 @@ class KDNA_AB_Meta_Box {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_classic' ) );
 		add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor' ) );
 		add_action( 'wp_ajax_kdna_ab_unlock_resend', array( $this, 'ajax_unlock' ) );
+		add_action( 'wp_ajax_kdna_ab_send_test', array( $this, 'ajax_send_test' ) );
+	}
+
+	/**
+	 * AJAX: sends a test of a post to the test recipients.
+	 *
+	 * @return void
+	 */
+	public function ajax_send_test() {
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$nonce   = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+
+		if ( ! wp_verify_nonce( $nonce, self::TEST_NONCE ) ) {
+			wp_send_json_error( array( 'message' => __( 'Your session has expired. Please reload and try again.', 'kdna-article-broadcast' ) ), 403 );
+		}
+
+		if ( ! $post_id || ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'You do not have permission to test this post.', 'kdna-article-broadcast' ) ), 403 );
+		}
+
+		$result = KDNA_AB_Sender::send_test( $post_id );
+
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ), 200 );
+		}
+
+		wp_send_json_success(
+			array(
+				'message'    => __( 'Test email sent.', 'kdna-article-broadcast' ),
+				'recipients' => $result['recipients'],
+			)
+		);
 	}
 
 	/*
@@ -297,6 +334,18 @@ class KDNA_AB_Meta_Box {
 				<?php if ( '' !== $status['detail'] ) : ?>
 					<span class="kdna-ab-mb-status__detail"><?php echo esc_html( $status['detail'] ); ?></span>
 				<?php endif; ?>
+			</div>
+
+			<div class="kdna-ab-mb-test">
+				<button
+					type="button"
+					class="button button-secondary kdna-ab-mb-test-button"
+					data-post="<?php echo esc_attr( $post->ID ); ?>"
+				>
+					<?php esc_html_e( 'Send test', 'kdna-article-broadcast' ); ?>
+				</button>
+				<span class="kdna-ab-mb-hint"><?php esc_html_e( 'Sends the real rendered email to you and any standing test addresses. Does not broadcast to subscribers.', 'kdna-article-broadcast' ); ?></span>
+				<div class="kdna-ab-mb-test-feedback" role="status" aria-live="polite"></div>
 			</div>
 
 			<?php if ( $status['locked'] ) : ?>
@@ -645,6 +694,7 @@ class KDNA_AB_Meta_Box {
 		return array(
 			'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
 			'unlockNonce' => wp_create_nonce( self::UNLOCK_NONCE ),
+			'testNonce'   => wp_create_nonce( self::TEST_NONCE ),
 			'keys'        => array(
 				'send'          => self::META_SEND,
 				'subject'       => self::META_SUBJECT,
@@ -681,6 +731,12 @@ class KDNA_AB_Meta_Box {
 				'unlockButton'  => __( 'Unlock and resend', 'kdna-article-broadcast' ),
 				'confirmUnlock' => __( 'Unlock this post so it can be broadcast again? Only do this if you genuinely need to resend.', 'kdna-article-broadcast' ),
 				'unlockError'   => __( 'The post could not be unlocked. Please try again.', 'kdna-article-broadcast' ),
+				'testHeading'   => __( 'Test send', 'kdna-article-broadcast' ),
+				'testButton'    => __( 'Send test', 'kdna-article-broadcast' ),
+				'testSending'   => __( 'Sending test...', 'kdna-article-broadcast' ),
+				'testHelp'      => __( 'Sends the real rendered email to you and any standing test addresses. Does not broadcast to subscribers.', 'kdna-article-broadcast' ),
+				'testSentTo'    => __( 'Test sent to:', 'kdna-article-broadcast' ),
+				'testError'     => __( 'The test could not be sent. Please try again.', 'kdna-article-broadcast' ),
 			),
 		);
 	}

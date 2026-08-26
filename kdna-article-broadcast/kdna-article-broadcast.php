@@ -161,6 +161,9 @@ function kdna_ab_default_settings() {
 		'hold_window'         => 30,
 		'notify_email'        => '',
 
+		// Stage 6, test sends. Up to four standing test addresses.
+		'test_addresses'      => array(),
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);

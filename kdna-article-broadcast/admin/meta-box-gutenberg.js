@@ -16,6 +16,7 @@
 
 	var el = wp.element.createElement;
 	var Fragment = wp.element.Fragment;
+	var useState = wp.element.useState;
 	var registerPlugin = wp.plugins.registerPlugin;
 	var PluginDocumentSettingPanel = wp.editPost.PluginDocumentSettingPanel;
 	var useSelect = wp.data.useSelect;
@@ -44,12 +45,16 @@
 		var editor = useSelect( function ( select ) {
 			var ed = select( 'core/editor' );
 			return {
+				id: ed.getCurrentPostId(),
 				title: ed.getEditedPostAttribute( 'title' ) || '',
 				meta: ed.getEditedPostAttribute( 'meta' ) || {}
 			};
 		}, [] );
 
 		var dispatch = useDispatch( 'core/editor' );
+
+		var testBusy = useState( false );
+		var testMsg = useState( null );
 
 		if ( 'post' !== postType ) {
 			return null;
@@ -78,6 +83,8 @@
 		} else {
 			children.push( renderControls( meta, editor.title, setMeta ) );
 		}
+
+		children.push( renderTest( editor.id, testBusy, testMsg ) );
 
 		return el(
 			PluginDocumentSettingPanel,
@@ -280,6 +287,70 @@
 		} );
 
 		return el( Fragment, { key: 'controls' }, [ sendControl, subjectControl, previewControl, teaserControl, ctaControl ] );
+	}
+
+	/**
+	 * Renders the test send section.
+	 *
+	 * @param {number} postId   Current post ID.
+	 * @param {Array}  testBusy useState pair for the busy flag.
+	 * @param {Array}  testMsg  useState pair for the feedback message.
+	 * @return {Object}
+	 */
+	function renderTest( postId, testBusy, testMsg ) {
+		var busy = testBusy[ 0 ];
+		var setBusy = testBusy[ 1 ];
+		var message = testMsg[ 0 ];
+		var setMessage = testMsg[ 1 ];
+
+		function runTest() {
+			setBusy( true );
+			setMessage( { type: 'info', text: I18N.testSending } );
+
+			var body = new FormData();
+			body.append( 'action', 'kdna_ab_send_test' );
+			body.append( 'nonce', M.testNonce );
+			body.append( 'post_id', postId );
+
+			window.fetch( M.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: body
+			} ).then( function ( response ) {
+				return response.json();
+			} ).then( function ( payload ) {
+				setBusy( false );
+
+				if ( payload && payload.success && payload.data ) {
+					setMessage( { type: 'success', text: I18N.testSentTo + ' ' + ( payload.data.recipients || [] ).join( ', ' ) } );
+				} else {
+					setMessage( { type: 'error', text: ( payload && payload.data && payload.data.message ) ? payload.data.message : I18N.testError } );
+				}
+			} ).catch( function () {
+				setBusy( false );
+				setMessage( { type: 'error', text: I18N.testError } );
+			} );
+		}
+
+		var rows = [
+			el( Button, {
+				key: 'testbtn',
+				variant: 'secondary',
+				isBusy: busy,
+				disabled: busy,
+				onClick: runTest
+			}, busy ? I18N.testSending : I18N.testButton ),
+			el( 'p', { key: 'testhelp', className: 'kdna-ab-mb-help' }, I18N.testHelp )
+		];
+
+		if ( message ) {
+			rows.push( el( 'div', {
+				key: 'testmsg',
+				className: 'kdna-ab-mb-test-feedback kdna-ab-mb-test-feedback--' + message.type
+			}, message.text ) );
+		}
+
+		return el( 'div', { key: 'test', className: 'kdna-ab-mb-test' }, rows );
 	}
 
 	registerPlugin( 'kdna-ab-article-broadcast', {
