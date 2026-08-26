@@ -136,9 +136,43 @@ function kdna_ab_default_settings() {
 		'mapping_single'      => array(),
 		'mapping_digest'      => array(),
 
+		// Stage 4, content assembly. JetEngine field mapping, configurable.
+		'intro_field'         => '',
+		'repeater_field'      => 'article_sections',
+		'repeater_body'       => 'section_bodycopy',
+		'repeater_heading'    => 'section_heading',
+		'repeater_image'      => 'section_image',
+		'teaser_word_count'   => 40,
+		'teaser_trim_sentence' => true,
+		'preview_use_heading' => false,
+		'placeholder_image'   => '',
+		'email_image_w'       => 1200,
+		'email_image_h'       => 630,
+		'date_format'         => '',
+		'cta_label'           => 'Read the full article',
+		'utm_source'          => 'newsletter',
+		'utm_medium'          => 'email',
+		'utm_campaign'        => '{slug}',
+		'read_time_meta_key'  => '',
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
+}
+
+/**
+ * Returns the plugin settings, merged over the defaults so every key exists.
+ *
+ * @return array
+ */
+function kdna_ab_get_settings() {
+	$stored = get_option( KDNA_AB_OPTION, array() );
+
+	if ( ! is_array( $stored ) ) {
+		$stored = array();
+	}
+
+	return array_merge( kdna_ab_default_settings(), $stored );
 }
 
 /*
@@ -158,6 +192,9 @@ function kdna_ab_bootstrap() {
 	// The meta box registers post meta, which must happen on both the admin and
 	// the front end so the REST API and later send logic can read it.
 	KDNA_AB_Meta_Box::instance();
+
+	// The content engine registers the email image size on both admin and front.
+	KDNA_AB_Content::instance();
 
 	// Admin only settings screen.
 	if ( is_admin() ) {

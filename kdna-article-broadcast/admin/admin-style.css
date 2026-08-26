@@ -260,3 +260,74 @@ table.kdna-ab-mapping {
 .kdna-ab-order__group strong {
 	font-weight: 600;
 }
+
+/* Stage 4, content assembly and preview. */
+
+.kdna-ab-field--check {
+	display: flex;
+	align-items: center;
+}
+
+.kdna-ab-field--check label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-ab-dimension {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-ab-dimension__x {
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-preview {
+	margin-top: var(--kdna-ab-gap);
+}
+
+.kdna-ab-preview__post {
+	margin: 0 0 8px;
+}
+
+.kdna-ab-preview__post span {
+	color: var(--kdna-ab-muted);
+	margin-left: 6px;
+}
+
+.kdna-ab-preview__image {
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-preview__image img {
+	display: block;
+	max-width: 320px;
+	height: auto;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 4px;
+}
+
+.kdna-ab-preview__imagesource {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+}
+
+table.kdna-ab-preview__table {
+	max-width: 720px;
+}
+
+.kdna-ab-preview__table th {
+	width: 140px;
+	text-align: left;
+	vertical-align: top;
+}
+
+.kdna-ab-preview__url {
+	word-break: break-all;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+}

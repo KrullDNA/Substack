@@ -98,6 +98,12 @@ class KDNA_AB_Settings {
 		add_action( 'wp_ajax_kdna_ab_get_template', array( $this, 'ajax_get_template' ) );
 		add_action( 'wp_ajax_kdna_ab_refresh_cache', array( $this, 'ajax_refresh_cache' ) );
 		add_action( 'wp_ajax_kdna_ab_save_selection', array( $this, 'ajax_save_selection' ) );
+
+		// Stage 4.
+		add_action( 'wp_ajax_kdna_ab_get_meta_fields', array( $this, 'ajax_get_meta_fields' ) );
+		add_action( 'wp_ajax_kdna_ab_get_subfields', array( $this, 'ajax_get_subfields' ) );
+		add_action( 'wp_ajax_kdna_ab_save_content', array( $this, 'ajax_save_content' ) );
+		add_action( 'wp_ajax_kdna_ab_preview_content', array( $this, 'ajax_preview_content' ) );
 	}
 
 	/*
@@ -292,6 +298,9 @@ class KDNA_AB_Settings {
 			return;
 		}
 
+		// The content settings placeholder picker uses the media library.
+		wp_enqueue_media();
+
 		wp_enqueue_style(
 			'kdna-ab-admin',
 			KDNA_AB_URL . 'admin/admin-style.css',
@@ -361,6 +370,8 @@ class KDNA_AB_Settings {
 				'digestRepeater'  => self::digest_repeater_fields(),
 			),
 			'typeLabels'  => self::region_type_labels(),
+			'content'     => $this->content_for_display( $settings ),
+			'metaFields'  => $this->list_public_meta_keys(),
 			'i18n'        => array(
 				'testing'       => __( 'Testing connection...', 'kdna-article-broadcast' ),
 				'saving'        => __( 'Saving...', 'kdna-article-broadcast' ),
@@ -375,8 +386,92 @@ class KDNA_AB_Settings {
 				'unused'        => __( 'Not used', 'kdna-article-broadcast' ),
 				'selectionSaved' => __( 'Selection and mapping saved.', 'kdna-article-broadcast' ),
 				'invalidEmail'  => __( 'Please enter a valid from email address.', 'kdna-article-broadcast' ),
+				'contentSaved'  => __( 'Content settings saved.', 'kdna-article-broadcast' ),
+				'previewing'    => __( 'Assembling preview...', 'kdna-article-broadcast' ),
+				'chooseImage'   => __( 'Choose placeholder image', 'kdna-article-broadcast' ),
+				'mediaTitle'    => __( 'Select a placeholder image', 'kdna-article-broadcast' ),
+				'mediaButton'   => __( 'Use this image', 'kdna-article-broadcast' ),
 			),
 		);
+	}
+
+	/**
+	 * Shapes the Stage 4 content settings for the browser.
+	 *
+	 * @param array $settings Full settings array.
+	 * @return array
+	 */
+	private function content_for_display( $settings ) {
+		return array(
+			'introField'        => (string) $settings['intro_field'],
+			'repeaterField'     => (string) $settings['repeater_field'],
+			'repeaterBody'      => (string) $settings['repeater_body'],
+			'repeaterHeading'   => (string) $settings['repeater_heading'],
+			'repeaterImage'     => (string) $settings['repeater_image'],
+			'teaserWordCount'   => (int) $settings['teaser_word_count'],
+			'teaserTrimSentence' => (bool) $settings['teaser_trim_sentence'],
+			'previewUseHeading' => (bool) $settings['preview_use_heading'],
+			'placeholderImage'  => (string) $settings['placeholder_image'],
+			'emailImageW'       => (int) $settings['email_image_w'],
+			'emailImageH'       => (int) $settings['email_image_h'],
+			'dateFormat'        => (string) $settings['date_format'],
+			'ctaLabel'          => (string) $settings['cta_label'],
+			'utmSource'         => (string) $settings['utm_source'],
+			'utmMedium'         => (string) $settings['utm_medium'],
+			'utmCampaign'       => (string) $settings['utm_campaign'],
+			'readTimeMetaKey'   => (string) $settings['read_time_meta_key'],
+		);
+	}
+
+	/**
+	 * Lists the public post meta keys present on the site.
+	 *
+	 * Underscore prefixed protected keys are excluded. This is what populates the
+	 * JetEngine field mapping dropdowns, so the list reflects the real fields on
+	 * this site rather than a hard-coded set. The currently configured keys are
+	 * always included, even if no post carries a value yet.
+	 *
+	 * @return array
+	 */
+	private function list_public_meta_keys() {
+		global $wpdb;
+
+		$cache_key = self::CACHE_PREFIX . 'meta_keys';
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$keys = $wpdb->get_col(
+			"SELECT DISTINCT pm.meta_key
+			 FROM {$wpdb->postmeta} pm
+			 INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+			 WHERE p.post_type = 'post'
+			 AND pm.meta_key NOT LIKE '\_%'
+			 ORDER BY pm.meta_key ASC
+			 LIMIT 300"
+		);
+
+		$keys = is_array( $keys ) ? array_map( 'strval', $keys ) : array();
+
+		// Always include the configured keys so a saved value is never lost.
+		$settings   = kdna_ab_get_settings();
+		$configured = array( $settings['intro_field'], $settings['repeater_field'] );
+
+		foreach ( $configured as $key ) {
+			$key = (string) $key;
+			if ( '' !== $key && ! in_array( $key, $keys, true ) ) {
+				$keys[] = $key;
+			}
+		}
+
+		sort( $keys );
+
+		set_transient( $cache_key, $keys, self::CACHE_TTL );
+
+		return $keys;
 	}
 
 	/**
@@ -793,6 +888,232 @@ class KDNA_AB_Settings {
 		}
 
 		return $out;
+	}
+
+	/*
+	 * -----------------------------------------------------------------------
+	 * Stage 4 AJAX handlers
+	 * -----------------------------------------------------------------------
+	 */
+
+	/**
+	 * AJAX: returns the public post meta keys, refreshing the cache.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_meta_fields() {
+		$this->verify_request();
+
+		delete_transient( self::CACHE_PREFIX . 'meta_keys' );
+
+		wp_send_json_success( array( 'metaFields' => $this->list_public_meta_keys() ) );
+	}
+
+	/**
+	 * AJAX: returns the sub-field keys found inside a repeater.
+	 *
+	 * Decodes the repeater from a recent post that has data, so the sub-field
+	 * dropdowns list the real keys on this site.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_subfields() {
+		$this->verify_request();
+
+		$repeater = isset( $_POST['repeater'] ) ? sanitize_text_field( wp_unslash( $_POST['repeater'] ) ) : '';
+
+		if ( '' === $repeater ) {
+			wp_send_json_error( array( 'message' => __( 'Choose a repeater field first.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$query = new WP_Query(
+			array(
+				'post_type'      => 'post',
+				'post_status'    => array( 'publish', 'future', 'draft', 'pending' ),
+				'posts_per_page' => 25,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'     => $repeater,
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		$subfields   = array();
+		$sample_post = 0;
+
+		foreach ( $query->posts as $pid ) {
+			$rows = KDNA_AB_Content::decode_repeater( $pid, $repeater );
+
+			if ( ! empty( $rows ) ) {
+				foreach ( $rows as $row ) {
+					foreach ( array_keys( $row ) as $sub_key ) {
+						$sub_key = (string) $sub_key;
+						if ( '' !== $sub_key && ! in_array( $sub_key, $subfields, true ) ) {
+							$subfields[] = $sub_key;
+						}
+					}
+				}
+				$sample_post = (int) $pid;
+				break;
+			}
+		}
+
+		// Keep the configured sub-fields available even if not seen in the sample.
+		$settings = kdna_ab_get_settings();
+
+		foreach ( array( $settings['repeater_body'], $settings['repeater_heading'], $settings['repeater_image'] ) as $key ) {
+			$key = (string) $key;
+			if ( '' !== $key && ! in_array( $key, $subfields, true ) ) {
+				$subfields[] = $key;
+			}
+		}
+
+		sort( $subfields );
+
+		wp_send_json_success(
+			array(
+				'subfields'  => $subfields,
+				'samplePost' => $sample_post,
+			)
+		);
+	}
+
+	/**
+	 * AJAX: saves the content assembly settings.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_content() {
+		$this->verify_request();
+
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$in  = json_decode( $raw, true );
+
+		if ( ! is_array( $in ) ) {
+			wp_send_json_error( array( 'message' => __( 'The settings could not be read. Please try again.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$settings = $this->get_settings();
+
+		$settings['intro_field']      = isset( $in['introField'] ) ? sanitize_text_field( $in['introField'] ) : '';
+		$settings['repeater_field']   = isset( $in['repeaterField'] ) ? sanitize_text_field( $in['repeaterField'] ) : '';
+		$settings['repeater_body']    = isset( $in['repeaterBody'] ) ? sanitize_text_field( $in['repeaterBody'] ) : '';
+		$settings['repeater_heading'] = isset( $in['repeaterHeading'] ) ? sanitize_text_field( $in['repeaterHeading'] ) : '';
+		$settings['repeater_image']   = isset( $in['repeaterImage'] ) ? sanitize_text_field( $in['repeaterImage'] ) : '';
+
+		$settings['teaser_word_count']    = isset( $in['teaserWordCount'] ) ? max( 1, absint( $in['teaserWordCount'] ) ) : 40;
+		$settings['teaser_trim_sentence'] = ! empty( $in['teaserTrimSentence'] );
+		$settings['preview_use_heading']  = ! empty( $in['previewUseHeading'] );
+
+		$settings['placeholder_image'] = $this->sanitise_media_value( isset( $in['placeholderImage'] ) ? $in['placeholderImage'] : '' );
+
+		$settings['email_image_w'] = isset( $in['emailImageW'] ) ? max( 1, absint( $in['emailImageW'] ) ) : 1200;
+		$settings['email_image_h'] = isset( $in['emailImageH'] ) ? max( 1, absint( $in['emailImageH'] ) ) : 630;
+
+		$settings['date_format'] = isset( $in['dateFormat'] ) ? sanitize_text_field( $in['dateFormat'] ) : '';
+		$settings['cta_label']   = isset( $in['ctaLabel'] ) ? sanitize_text_field( $in['ctaLabel'] ) : '';
+
+		$settings['utm_source']   = isset( $in['utmSource'] ) ? sanitize_text_field( $in['utmSource'] ) : '';
+		$settings['utm_medium']   = isset( $in['utmMedium'] ) ? sanitize_text_field( $in['utmMedium'] ) : '';
+		$settings['utm_campaign'] = isset( $in['utmCampaign'] ) ? sanitize_text_field( $in['utmCampaign'] ) : '';
+
+		$settings['read_time_meta_key'] = isset( $in['readTimeMetaKey'] ) ? sanitize_text_field( $in['readTimeMetaKey'] ) : '';
+
+		update_option( KDNA_AB_OPTION, $settings );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Content settings saved.', 'kdna-article-broadcast' ),
+				'content' => $this->content_for_display( $settings ),
+			)
+		);
+	}
+
+	/**
+	 * Sanitises a media value that may be an attachment ID or a URL.
+	 *
+	 * @param mixed $value Submitted value.
+	 * @return string
+	 */
+	private function sanitise_media_value( $value ) {
+		$value = trim( (string) $value );
+
+		if ( '' === $value ) {
+			return '';
+		}
+
+		if ( is_numeric( $value ) ) {
+			return (string) absint( $value );
+		}
+
+		if ( filter_var( $value, FILTER_VALIDATE_URL ) ) {
+			return esc_url_raw( $value );
+		}
+
+		return '';
+	}
+
+	/**
+	 * AJAX: assembles a preview for a post, or the most recent one.
+	 *
+	 * @return void
+	 */
+	public function ajax_preview_content() {
+		$this->verify_request();
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+
+		if ( ! $post_id ) {
+			$latest = get_posts(
+				array(
+					'post_type'      => 'post',
+					'post_status'    => 'publish',
+					'posts_per_page' => 1,
+					'fields'         => 'ids',
+					'no_found_rows'  => true,
+				)
+			);
+
+			$post_id = ! empty( $latest ) ? (int) $latest[0] : 0;
+		}
+
+		if ( ! $post_id ) {
+			wp_send_json_error( array( 'message' => __( 'No post was found to preview.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		$assembled = KDNA_AB_Content::assemble( $post_id );
+
+		$base = array(
+			'postId'    => $post_id,
+			'postTitle' => get_the_title( $post_id ),
+			'editLink'  => get_edit_post_link( $post_id, 'raw' ),
+		);
+
+		if ( is_wp_error( $assembled ) ) {
+			wp_send_json_success(
+				array_merge(
+					$base,
+					array(
+						'blocked' => true,
+						'message' => $assembled->get_error_message(),
+					)
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array_merge(
+				$base,
+				array(
+					'blocked'   => false,
+					'assembled' => $assembled,
+				)
+			)
+		);
 	}
 
 	/*

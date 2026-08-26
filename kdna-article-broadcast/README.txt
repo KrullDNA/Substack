@@ -68,6 +68,28 @@ This build is delivered in stages. Each stage is individually testable.
 * The post meta keys are registered once and shared by both editors, and are
   fixed so the future Klaviyo edition can carry across send history.
 
+**Stage 4, content assembly engine (this release)**
+
+* Reads article content from JetEngine fields, not post_content. The intro
+  field, the article_sections repeater and its body, heading and image
+  sub-fields are chosen in settings dropdowns populated from the site's real
+  fields, so nothing is hard-coded and a field rename needs no developer.
+* JetEngine repeater JSON is decoded and walked in stored row order.
+* Teaser starts from the intro and only continues into the first repeater row
+  body copy if the configured word count is not met, with markup and shortcode
+  stripping and an optional trim to the nearest full sentence.
+* Registered trademark symbols, curly quotes and apostrophes, ellipses, dashes
+  and non-breaking spaces are converted to HTML entities so they render in
+  Outlook and Gmail rather than as garbled characters.
+* Three level image fallback: WordPress featured image, then the first section
+  image, then a configurable placeholder, at a dedicated email image size.
+* Read time is read from KDNA Reading Time and never recalculated. If that
+  plugin is inactive or returns nothing, the read time is omitted cleanly.
+* Category, author, published date in a configurable format, global CTA label
+  with a per-post override, and a UTM builder with {slug} and {date} tokens.
+* A settings preview panel assembles a chosen or the most recent post, and a
+  post with no intro and no repeater rows is blocked with a clear warning.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -98,3 +120,7 @@ authentication salts, and it is never sent back to the browser.
 * Stage 3: the Article Broadcast post editor panel, Posts only, in both
   Gutenberg and Classic, with the send checkbox, title tracking subject,
   preview and teaser fields, status readout and unlock and resend.
+* Stage 4: the JetEngine content assembly engine, field mapping dropdowns,
+  repeater decoding, teaser generation, entity conversion, three level image
+  fallback, KDNA Reading Time lookup, UTM builder, and the settings preview
+  panel with an empty-content block.

@@ -327,11 +327,209 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</form>
 	</div>
 
+	<?php /* ------------------------------------------------------------------ */ ?>
+	<?php /* Stage 4, content assembly.                                        */ ?>
+	<?php /* ------------------------------------------------------------------ */ ?>
+
+	<div class="kdna-ab-card">
+		<h2 class="kdna-ab-card__heading"><?php esc_html_e( 'Content assembly', 'kdna-article-broadcast' ); ?></h2>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'Article content on this site lives in JetEngine fields, not the post body. Map the fields below, then use the preview to check the assembled values before anything is sent.', 'kdna-article-broadcast' ); ?>
+		</p>
+
+		<form class="kdna-ab-form" @submit.prevent="saveContent()">
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'JetEngine field mapping', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-intro"><?php esc_html_e( 'Intro field', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-intro" class="kdna-ab-select" x-model="content.introField">
+						<option value=""><?php esc_html_e( 'Not set', 'kdna-article-broadcast' ); ?></option>
+						<template x-for="key in metaFields" :key="'intro-' + key">
+							<option :value="key" x-text="key"></option>
+						</template>
+					</select>
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'The primary teaser source.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-repeater"><?php esc_html_e( 'Article sections repeater', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-repeater" class="kdna-ab-select" x-model="content.repeaterField" @change="loadSubfields()">
+						<option value=""><?php esc_html_e( 'Not set', 'kdna-article-broadcast' ); ?></option>
+						<template x-for="key in metaFields" :key="'rep-' + key">
+							<option :value="key" x-text="key"></option>
+						</template>
+					</select>
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'The repeater holding the article body, one row per section.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-body"><?php esc_html_e( 'Body copy sub-field', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-body" class="kdna-ab-select" x-model="content.repeaterBody" :disabled="loadingSubfields">
+						<option value=""><?php esc_html_e( 'Not set', 'kdna-article-broadcast' ); ?></option>
+						<template x-for="key in subfields" :key="'body-' + key">
+							<option :value="key" x-text="key"></option>
+						</template>
+					</select>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-heading"><?php esc_html_e( 'Heading sub-field', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-heading" class="kdna-ab-select" x-model="content.repeaterHeading" :disabled="loadingSubfields">
+						<option value=""><?php esc_html_e( 'Not set', 'kdna-article-broadcast' ); ?></option>
+						<template x-for="key in subfields" :key="'head-' + key">
+							<option :value="key" x-text="key"></option>
+						</template>
+					</select>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-image"><?php esc_html_e( 'Section image sub-field', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-image" class="kdna-ab-select" x-model="content.repeaterImage" :disabled="loadingSubfields">
+						<option value=""><?php esc_html_e( 'Not set', 'kdna-article-broadcast' ); ?></option>
+						<template x-for="key in subfields" :key="'img-' + key">
+							<option :value="key" x-text="key"></option>
+						</template>
+					</select>
+				</div>
+			</div>
+			<p class="kdna-ab-field__hint">
+				<button type="button" class="button-link" @click="refreshFields()"><?php esc_html_e( 'Refresh field list', 'kdna-article-broadcast' ); ?></button>
+				<span x-show="loadingSubfields" x-cloak><?php esc_html_e( 'Loading sub-fields...', 'kdna-article-broadcast' ); ?></span>
+			</p>
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Teaser', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-words"><?php esc_html_e( 'Teaser word count', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-words" type="number" min="1" step="1" class="small-text" x-model.number="content.teaserWordCount" />
+				</div>
+				<div class="kdna-ab-field kdna-ab-field--check">
+					<label><input type="checkbox" x-model="content.teaserTrimSentence" /> <?php esc_html_e( 'Trim to the nearest full sentence', 'kdna-article-broadcast' ); ?></label>
+				</div>
+				<div class="kdna-ab-field kdna-ab-field--check">
+					<label><input type="checkbox" x-model="content.previewUseHeading" /> <?php esc_html_e( 'Use the first section heading as preview text', 'kdna-article-broadcast' ); ?></label>
+				</div>
+			</div>
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Image', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-placeholder"><?php esc_html_e( 'Placeholder image', 'kdna-article-broadcast' ); ?></label>
+					<div class="kdna-ab-input-group">
+						<input id="kdna-ab-placeholder" type="text" class="kdna-ab-input" x-model="content.placeholderImage" placeholder="<?php esc_attr_e( 'Attachment ID or image URL', 'kdna-article-broadcast' ); ?>" />
+						<button type="button" class="button" @click="chooseImage()"><?php esc_html_e( 'Choose', 'kdna-article-broadcast' ); ?></button>
+					</div>
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Used when a post has no featured image and no section image.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label"><?php esc_html_e( 'Email image size', 'kdna-article-broadcast' ); ?></label>
+					<div class="kdna-ab-dimension">
+						<input type="number" min="1" step="1" class="small-text" x-model.number="content.emailImageW" aria-label="<?php esc_attr_e( 'Width', 'kdna-article-broadcast' ); ?>" />
+						<span class="kdna-ab-dimension__x">&times;</span>
+						<input type="number" min="1" step="1" class="small-text" x-model.number="content.emailImageH" aria-label="<?php esc_attr_e( 'Height', 'kdna-article-broadcast' ); ?>" />
+						<span><?php esc_html_e( 'px', 'kdna-article-broadcast' ); ?></span>
+					</div>
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Default 1200 by 630. Regenerate thumbnails after changing this.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Meta, date and CTA', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-dateformat"><?php esc_html_e( 'Date format', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-dateformat" type="text" class="kdna-ab-input" x-model="content.dateFormat" placeholder="<?php echo esc_attr( get_option( 'date_format' ) ); ?>" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Leave blank to use the site date format.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-cta"><?php esc_html_e( 'Global CTA label', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-cta" type="text" class="kdna-ab-input" x-model="content.ctaLabel" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Per-post overrides are set in the Article Broadcast panel.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-readtime"><?php esc_html_e( 'Read time meta key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-readtime" type="text" class="kdna-ab-input" x-model="content.readTimeMetaKey" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'The KDNA Reading Time meta key. Leave blank to auto-detect. Omitted if inactive.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'UTM tracking', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-utm-source"><?php esc_html_e( 'utm_source', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-utm-source" type="text" class="kdna-ab-input" x-model="content.utmSource" />
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-utm-medium"><?php esc_html_e( 'utm_medium', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-utm-medium" type="text" class="kdna-ab-input" x-model="content.utmMedium" />
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-utm-campaign"><?php esc_html_e( 'utm_campaign', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-utm-campaign" type="text" class="kdna-ab-input" x-model="content.utmCampaign" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Tokens: {slug} and {date} are replaced per send.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-actions">
+				<button type="submit" class="button button-primary" :disabled="savingContent">
+					<span x-show="! savingContent"><?php esc_html_e( 'Save content settings', 'kdna-article-broadcast' ); ?></span>
+					<span x-show="savingContent" x-cloak><?php esc_html_e( 'Saving...', 'kdna-article-broadcast' ); ?></span>
+				</button>
+			</div>
+
+			<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (contentResult ? contentResult.type : 'info')" x-show="contentResult" x-cloak role="status" aria-live="polite">
+				<span x-text="contentResult ? contentResult.message : ''"></span>
+			</div>
+		</form>
+
+		<?php /* Preview panel. */ ?>
+		<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Preview', 'kdna-article-broadcast' ); ?></h3>
+		<p class="kdna-ab-card__intro"><?php esc_html_e( 'Assembles the values for a post so the mapping can be checked without sending anything.', 'kdna-article-broadcast' ); ?></p>
+		<div class="kdna-ab-actions">
+			<input type="number" min="1" step="1" class="small-text" x-model.number="previewPostId" placeholder="<?php esc_attr_e( 'Post ID', 'kdna-article-broadcast' ); ?>" aria-label="<?php esc_attr_e( 'Post ID to preview', 'kdna-article-broadcast' ); ?>" />
+			<button type="button" class="button button-secondary" @click="preview()" :disabled="previewing">
+				<span x-show="! previewing"><?php esc_html_e( 'Preview most recent or entered post', 'kdna-article-broadcast' ); ?></span>
+				<span x-show="previewing" x-cloak><?php esc_html_e( 'Assembling...', 'kdna-article-broadcast' ); ?></span>
+			</button>
+		</div>
+
+		<div class="kdna-ab-notice kdna-ab-notice--error" x-show="previewData && previewData.blocked" x-cloak>
+			<strong><?php esc_html_e( 'Send would be blocked:', 'kdna-article-broadcast' ); ?></strong>
+			<span x-text="previewData ? previewData.message : ''"></span>
+		</div>
+
+		<div class="kdna-ab-preview" x-show="previewData && ! previewData.blocked" x-cloak>
+			<p class="kdna-ab-preview__post">
+				<strong x-text="previewData ? previewData.postTitle : ''"></strong>
+				<span x-text="previewData ? ('#' + previewData.postId) : ''"></span>
+			</p>
+			<div class="kdna-ab-preview__image" x-show="previewData && previewData.assembled && previewData.assembled.image_url">
+				<img :src="previewData && previewData.assembled ? previewData.assembled.image_url : ''" alt="" />
+				<span class="kdna-ab-preview__imagesource" x-text="previewData && previewData.assembled ? ('<?php echo esc_js( __( 'Image source:', 'kdna-article-broadcast' ) ); ?> ' + previewData.assembled.image_source) : ''"></span>
+			</div>
+			<table class="kdna-ab-preview__table widefat striped" x-show="previewData && previewData.assembled">
+				<tbody>
+					<tr><th><?php esc_html_e( 'Subject', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.subject : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Preview text', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.preview_text : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Title', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.title : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Teaser', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.teaser : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Category', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.category : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Author', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.author : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Date', 'kdna-article-broadcast' ); ?></th><td x-text="previewData && previewData.assembled ? previewData.assembled.date : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Read time', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? (previewData.assembled.has_read_time ? previewData.assembled.read_time : '<?php echo esc_js( __( 'omitted, KDNA Reading Time not found', 'kdna-article-broadcast' ) ); ?>') : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'CTA label', 'kdna-article-broadcast' ); ?></th><td x-html="previewData && previewData.assembled ? previewData.assembled.cta_label : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'Article link', 'kdna-article-broadcast' ); ?></th><td class="kdna-ab-preview__url" x-text="previewData && previewData.assembled ? previewData.assembled.article_link : ''"></td></tr>
+					<tr><th><?php esc_html_e( 'CTA link', 'kdna-article-broadcast' ); ?></th><td class="kdna-ab-preview__url" x-text="previewData && previewData.assembled ? previewData.assembled.cta_link : ''"></td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
 	<p class="kdna-ab-footnote">
 		<?php
 		printf(
 			/* translators: %s: plugin version number. */
-			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 and 2 complete.', 'kdna-article-broadcast' ),
+			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 4 complete.', 'kdna-article-broadcast' ),
 			esc_html( KDNA_AB_VERSION )
 		);
 		?>

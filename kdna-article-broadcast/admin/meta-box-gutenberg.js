@@ -208,6 +208,7 @@
 		var subjectValue = auto ? title : ( meta[ KEYS.subject ] || '' );
 		var preview = meta[ KEYS.preview ] || '';
 		var teaser = meta[ KEYS.teaser ] || '';
+		var cta = meta[ KEYS.ctaOverride ] || '';
 
 		var sendControl = el( CheckboxControl, {
 			key: 'send',
@@ -258,7 +259,19 @@
 			}
 		} );
 
-		return el( Fragment, { key: 'controls' }, [ sendControl, subjectControl, previewControl, teaserControl ] );
+		var ctaControl = el( TextControl, {
+			key: 'cta',
+			label: I18N.ctaLabel,
+			help: I18N.ctaHelp,
+			value: cta,
+			onChange: function ( value ) {
+				var v = {};
+				v[ KEYS.ctaOverride ] = value;
+				setMeta( v );
+			}
+		} );
+
+		return el( Fragment, { key: 'controls' }, [ sendControl, subjectControl, previewControl, teaserControl, ctaControl ] );
 	}
 
 	registerPlugin( 'kdna-ab-article-broadcast', {

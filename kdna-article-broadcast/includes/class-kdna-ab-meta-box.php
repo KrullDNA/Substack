@@ -33,6 +33,7 @@ class KDNA_AB_Meta_Box {
 	const META_SUBJECT_AUTO   = '_kdna_ab_subject_auto';
 	const META_PREVIEW        = '_kdna_ab_preview_text';
 	const META_TEASER         = '_kdna_ab_teaser_override';
+	const META_CTA_OVERRIDE   = '_kdna_ab_cta_override';
 	const META_STATUS         = '_kdna_ab_status';
 	const META_STATUS_MESSAGE = '_kdna_ab_status_message';
 	const META_STATUS_TIME    = '_kdna_ab_status_time';
@@ -101,6 +102,7 @@ class KDNA_AB_Meta_Box {
 			self::META_SEND         => 'sanitize_text_field',
 			self::META_SUBJECT      => 'sanitize_text_field',
 			self::META_SUBJECT_AUTO => 'sanitize_text_field',
+			self::META_CTA_OVERRIDE => 'sanitize_text_field',
 			self::META_STATUS       => 'sanitize_text_field',
 			self::META_STATUS_TIME  => 'sanitize_text_field',
 			self::META_CAMPAIGN_ID  => 'sanitize_text_field',
@@ -271,6 +273,7 @@ class KDNA_AB_Meta_Box {
 		$subject = (string) get_post_meta( $post->ID, self::META_SUBJECT, true );
 		$preview = (string) get_post_meta( $post->ID, self::META_PREVIEW, true );
 		$teaser  = (string) get_post_meta( $post->ID, self::META_TEASER, true );
+		$cta     = (string) get_post_meta( $post->ID, self::META_CTA_OVERRIDE, true );
 
 		// When auto is on, show the title as the live subject value.
 		$subject_display = ( $auto || '' === $subject ) ? get_the_title( $post->ID ) : $subject;
@@ -354,6 +357,18 @@ class KDNA_AB_Meta_Box {
 					<span class="kdna-ab-mb-hint"><?php esc_html_e( 'Optional. Leave blank to use the automatically generated teaser.', 'kdna-article-broadcast' ); ?></span>
 				</p>
 
+				<p class="kdna-ab-mb-row">
+					<label class="kdna-ab-mb-label" for="kdna-ab-mb-cta"><?php esc_html_e( 'CTA button label override', 'kdna-article-broadcast' ); ?></label>
+					<input
+						type="text"
+						id="kdna-ab-mb-cta"
+						class="widefat"
+						name="<?php echo esc_attr( self::META_CTA_OVERRIDE ); ?>"
+						value="<?php echo esc_attr( $cta ); ?>"
+					/>
+					<span class="kdna-ab-mb-hint"><?php esc_html_e( 'Optional. Leave blank to use the global CTA label from the settings page.', 'kdna-article-broadcast' ); ?></span>
+				</p>
+
 			<?php endif; ?>
 
 		</div>
@@ -427,6 +442,9 @@ class KDNA_AB_Meta_Box {
 
 		$teaser = isset( $_POST[ self::META_TEASER ] ) ? sanitize_textarea_field( wp_unslash( $_POST[ self::META_TEASER ] ) ) : '';
 		update_post_meta( $post_id, self::META_TEASER, $teaser );
+
+		$cta = isset( $_POST[ self::META_CTA_OVERRIDE ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::META_CTA_OVERRIDE ] ) ) : '';
+		update_post_meta( $post_id, self::META_CTA_OVERRIDE, $cta );
 	}
 
 	/*
@@ -573,6 +591,7 @@ class KDNA_AB_Meta_Box {
 				'subjectAuto'   => self::META_SUBJECT_AUTO,
 				'preview'       => self::META_PREVIEW,
 				'teaser'        => self::META_TEASER,
+				'ctaOverride'   => self::META_CTA_OVERRIDE,
 				'status'        => self::META_STATUS,
 				'statusMessage' => self::META_STATUS_MESSAGE,
 				'statusTime'    => self::META_STATUS_TIME,
@@ -590,6 +609,8 @@ class KDNA_AB_Meta_Box {
 				'previewHelp'   => __( 'Optional. Falls back to the automatic teaser if left blank.', 'kdna-article-broadcast' ),
 				'teaserLabel'   => __( 'Teaser override', 'kdna-article-broadcast' ),
 				'teaserHelp'    => __( 'Optional. Leave blank to use the automatically generated teaser.', 'kdna-article-broadcast' ),
+				'ctaLabel'      => __( 'CTA button label override', 'kdna-article-broadcast' ),
+				'ctaHelp'       => __( 'Optional. Leave blank to use the global CTA label from the settings page.', 'kdna-article-broadcast' ),
 				'statusHeading' => __( 'Broadcast status', 'kdna-article-broadcast' ),
 				'sentPrefix'    => __( 'Sent on', 'kdna-article-broadcast' ),
 				'sendsPrefix'   => __( 'Sends at', 'kdna-article-broadcast' ),

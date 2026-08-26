@@ -90,6 +90,17 @@
 			refreshing: false,
 			selectionResult: null,
 
+			// Stage 4 state.
+			content: JSON.parse( JSON.stringify( kdnaAb.content || {} ) ),
+			metaFields: kdnaAb.metaFields || [],
+			subfields: [],
+			loadingSubfields: false,
+			savingContent: false,
+			contentResult: null,
+			previewing: false,
+			previewData: null,
+			previewPostId: null,
+
 			/**
 			 * True while a Stage 1 request is in flight.
 			 *
@@ -116,6 +127,10 @@
 			init: function () {
 				if ( this.connection && this.connection.verified ) {
 					this.loadClients();
+				}
+
+				if ( this.content && this.content.repeaterField ) {
+					this.loadSubfields();
 				}
 			},
 
@@ -513,6 +528,148 @@
 					.finally( function () {
 						this.savingSelection = false;
 					}.bind( this ) );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 4, content assembly
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Loads the repeater sub-field keys from the site data.
+			 *
+			 * @return {void}
+			 */
+			loadSubfields: function () {
+				if ( ! this.content.repeaterField ) {
+					this.subfields = [];
+					return;
+				}
+
+				this.loadingSubfields = true;
+
+				request( 'kdna_ab_get_subfields', { repeater: this.content.repeaterField } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.subfields = payload.data.subfields || [];
+						} else {
+							this.contentResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.contentResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.loadingSubfields = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Refreshes the meta field list and sub-fields.
+			 *
+			 * @return {void}
+			 */
+			refreshFields: function () {
+				request( 'kdna_ab_get_meta_fields', {} )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.metaFields = payload.data.metaFields || [];
+						}
+					}.bind( this ) )
+					.catch( function () {} );
+
+				if ( this.content.repeaterField ) {
+					this.loadSubfields();
+				}
+			},
+
+			/**
+			 * Saves the content settings.
+			 *
+			 * @return {void}
+			 */
+			saveContent: function () {
+				if ( this.savingContent ) {
+					return;
+				}
+
+				this.savingContent = true;
+				this.contentResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				request( 'kdna_ab_save_content', { payload: JSON.stringify( this.content ) } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.contentResult = { type: 'success', message: payload.data.message };
+							if ( payload.data.content ) {
+								this.content = Object.assign( {}, this.content, payload.data.content );
+							}
+						} else {
+							this.contentResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.contentResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.savingContent = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Assembles a preview for the most recent, or entered, post.
+			 *
+			 * @return {void}
+			 */
+			preview: function () {
+				if ( this.previewing ) {
+					return;
+				}
+
+				this.previewing = true;
+				this.previewData = null;
+
+				var params = this.previewPostId ? { post_id: this.previewPostId } : {};
+
+				request( 'kdna_ab_preview_content', params )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.previewData = payload.data;
+						} else {
+							this.contentResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.contentResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.previewing = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Opens the media library to choose a placeholder image.
+			 *
+			 * @return {void}
+			 */
+			chooseImage: function () {
+				if ( ! window.wp || ! window.wp.media ) {
+					return;
+				}
+
+				var self = this;
+				var frame = window.wp.media( {
+					title: kdnaAb.i18n.mediaTitle,
+					button: { text: kdnaAb.i18n.mediaButton },
+					multiple: false
+				} );
+
+				frame.on( 'select', function () {
+					var attachment = frame.state().get( 'selection' ).first().toJSON();
+					self.content.placeholderImage = String( attachment.id );
+				} );
+
+				frame.open();
 			},
 
 			/*
