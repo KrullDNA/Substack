@@ -209,6 +209,24 @@ This build is delivered in stages. Each stage is individually testable.
   dimensional control is responsive across all three breakpoints, and no
   selector targets elementor-widget-container.
 
+**Stage 12, newsletter archive widget (this release)**
+
+* An Elementor widget, slug kdna-newsletter-archive, in the KDNA Tools
+  category, listing past broadcasts.
+* Two sources: the Campaign Monitor API, cached in a one hour transient so
+  there is no API call on every page load, or the local send log which shows
+  new sends immediately. API is the default.
+* List or grid layout, with a responsive column count for the grid.
+* Each item shows the subject and the send date, with an optional link to the
+  Campaign Monitor web version where available.
+* An items per page control, with optional a Load more button (AJAX) or
+  numbered pages.
+* A clean empty state when no campaigns have been sent yet.
+* Complete responsive style controls: wrapper, item card with a hover state,
+  subject typography and colour with hover, date typography and colour, the
+  list divider, gap controls and empty state styling. All driven by CSS custom
+  properties, no selector targets elementor-widget-container.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -264,3 +282,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 11: the full Elementor style controls for the signup widget, every
   element and state, an editor only preview state control, all driven by CSS
   custom properties with every dimensional control responsive.
+* Stage 12: the newsletter archive widget, API or local log source with
+  transient caching, list and grid layouts, load more or numbered pagination,
+  the empty state, and complete responsive style controls with hover states.

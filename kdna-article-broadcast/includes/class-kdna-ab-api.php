@@ -127,6 +127,16 @@ class KDNA_AB_API {
 	}
 
 	/**
+	 * Fetches the sent campaigns for a client, most recent first.
+	 *
+	 * @param string $client_id Campaign Monitor client ID.
+	 * @return array|WP_Error
+	 */
+	public function get_sent_campaigns( $client_id ) {
+		return $this->request( 'GET', 'clients/' . rawurlencode( $client_id ) . '/campaigns.json' );
+	}
+
+	/**
 	 * Looks up a subscriber on a list by email address.
 	 *
 	 * Returns the subscriber record, including State, or a WP_Error. A 404 means

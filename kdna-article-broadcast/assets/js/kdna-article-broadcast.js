@@ -16,7 +16,62 @@
 	document.addEventListener( 'DOMContentLoaded', function () {
 		var widgets = document.querySelectorAll( '.kdna-ab-subscribe' );
 		Array.prototype.forEach.call( widgets, setup );
+
+		var moreButtons = document.querySelectorAll( '.kdna-ab-archive__more' );
+		Array.prototype.forEach.call( moreButtons, setupLoadMore );
 	} );
+
+	/**
+	 * Wires an archive Load more button.
+	 *
+	 * @param {HTMLElement} button The Load more button.
+	 * @return {void}
+	 */
+	function setupLoadMore( button ) {
+		var archive = button.closest( '.kdna-ab-archive' );
+		var container = archive ? archive.querySelector( '.kdna-ab-archive__items' ) : null;
+
+		if ( ! container ) {
+			return;
+		}
+
+		button.addEventListener( 'click', function () {
+			if ( button.disabled ) {
+				return;
+			}
+
+			button.disabled = true;
+			var nextPage = ( parseInt( button.getAttribute( 'data-page' ), 10 ) || 1 ) + 1;
+
+			var body = new FormData();
+			body.append( 'action', 'kdna_ab_archive_more' );
+			body.append( 'nonce', config.archiveNonce );
+			body.append( 'source', button.getAttribute( 'data-source' ) );
+			body.append( 'number', button.getAttribute( 'data-number' ) );
+			body.append( 'page', String( nextPage ) );
+
+			fetch( config.ajaxUrl, {
+				method: 'POST',
+				credentials: 'same-origin',
+				body: body
+			} ).then( function ( response ) {
+				return response.json();
+			} ).then( function ( payload ) {
+				button.disabled = false;
+
+				if ( payload && payload.success && payload.data ) {
+					container.insertAdjacentHTML( 'beforeend', payload.data.html || '' );
+					button.setAttribute( 'data-page', String( nextPage ) );
+
+					if ( ! payload.data.hasMore ) {
+						button.parentNode.removeChild( button );
+					}
+				}
+			} ).catch( function () {
+				button.disabled = false;
+			} );
+		} );
+	}
 
 	/**
 	 * Wires a single widget instance.

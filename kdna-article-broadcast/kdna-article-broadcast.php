@@ -266,6 +266,9 @@ function kdna_ab_bootstrap() {
 	// The Elementor loader registers the category, widgets and front end assets.
 	KDNA_AB_Elementor::instance();
 
+	// The archive data provider registers the Load more AJAX for logged in and out.
+	KDNA_AB_Archive::instance();
+
 	// The send log runs the purge cron everywhere and the admin screen in admin.
 	KDNA_AB_Log::instance();
 

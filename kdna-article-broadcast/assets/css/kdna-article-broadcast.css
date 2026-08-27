@@ -372,3 +372,114 @@
 .kdna-ab-subscribe__form--preview-success .kdna-ab-subscribe__description {
 	display: none;
 }
+
+/*
+ * =========================================================================
+ * Newsletter archive widget.
+ * =========================================================================
+ */
+
+.kdna-ab-archive {
+	--kdna-archive-columns: 3;
+	--kdna-archive-gap-x: 24px;
+	--kdna-archive-gap-y: 16px;
+	--kdna-archive-item-bg: transparent;
+	--kdna-archive-item-border-colour: transparent;
+	--kdna-archive-item-border-width: 0;
+	--kdna-archive-item-border-style: solid;
+	--kdna-archive-item-radius: 0;
+	--kdna-archive-item-padding: 0;
+	--kdna-archive-subject-colour: inherit;
+	--kdna-archive-date-colour: inherit;
+	--kdna-archive-divider-colour: #e0e0e0;
+	--kdna-archive-divider-width: 1px;
+	--kdna-archive-divider-style: solid;
+	--kdna-archive-empty-colour: inherit;
+	--kdna-archive-empty-align: left;
+	--kdna-archive-transition: 0.2s;
+}
+
+.kdna-ab-archive__items {
+	display: flex;
+	flex-direction: column;
+	row-gap: var(--kdna-archive-gap-y);
+}
+
+.kdna-ab-archive--grid .kdna-ab-archive__items {
+	display: grid;
+	grid-template-columns: repeat( var(--kdna-archive-columns), minmax( 0, 1fr ) );
+	column-gap: var(--kdna-archive-gap-x);
+	row-gap: var(--kdna-archive-gap-y);
+}
+
+.kdna-ab-archive__item {
+	background: var(--kdna-archive-item-bg);
+	border-color: var(--kdna-archive-item-border-colour);
+	border-width: var(--kdna-archive-item-border-width);
+	border-style: var(--kdna-archive-item-border-style);
+	border-radius: var(--kdna-archive-item-radius);
+	padding: var(--kdna-archive-item-padding);
+	transition: background var(--kdna-archive-transition), border-color var(--kdna-archive-transition), box-shadow var(--kdna-archive-transition);
+}
+
+.kdna-ab-archive__item:hover {
+	background: var(--kdna-archive-item-bg-hover, var(--kdna-archive-item-bg));
+	border-color: var(--kdna-archive-item-border-colour-hover, var(--kdna-archive-item-border-colour));
+}
+
+/* List layout divider between items. */
+
+.kdna-ab-archive--list .kdna-ab-archive__item + .kdna-ab-archive__item {
+	border-top-color: var(--kdna-archive-divider-colour);
+	border-top-width: var(--kdna-archive-divider-width);
+	border-top-style: var(--kdna-archive-divider-style);
+	padding-top: var(--kdna-archive-gap-y);
+}
+
+.kdna-ab-archive__subject {
+	margin: 0;
+	color: var(--kdna-archive-subject-colour);
+}
+
+.kdna-ab-archive__subject a,
+.kdna-ab-archive__link {
+	color: inherit;
+	text-decoration: none;
+}
+
+.kdna-ab-archive__item:hover .kdna-ab-archive__subject {
+	color: var(--kdna-archive-subject-colour-hover, var(--kdna-archive-subject-colour));
+}
+
+.kdna-ab-archive__date {
+	color: var(--kdna-archive-date-colour);
+	margin-top: 4px;
+}
+
+.kdna-ab-archive__empty {
+	color: var(--kdna-archive-empty-colour);
+	text-align: var(--kdna-archive-empty-align);
+}
+
+.kdna-ab-archive__more {
+	display: inline-block;
+	margin-top: var(--kdna-archive-gap-y);
+	cursor: pointer;
+}
+
+.kdna-ab-archive__more[disabled] {
+	opacity: 0.7;
+	cursor: default;
+}
+
+.kdna-ab-archive__pagination {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: var(--kdna-archive-gap-y);
+}
+
+.kdna-ab-archive__page--current {
+	font-weight: 700;
+	text-decoration: underline;
+}

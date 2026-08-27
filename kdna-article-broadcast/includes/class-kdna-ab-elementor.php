@@ -92,8 +92,10 @@ class KDNA_AB_Elementor {
 	 */
 	public function register_widgets( $manager ) {
 		require_once KDNA_AB_DIR . 'widgets/class-kdna-ab-widget-subscribe.php';
+		require_once KDNA_AB_DIR . 'widgets/class-kdna-ab-widget-archive.php';
 
 		$manager->register( new KDNA_AB_Widget_Subscribe() );
+		$manager->register( new KDNA_AB_Widget_Archive() );
 	}
 
 	/**
@@ -138,10 +140,11 @@ class KDNA_AB_Elementor {
 			self::SCRIPT_HANDLE,
 			'kdnaAbSubscribe',
 			array(
-				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
-				'nonce'           => wp_create_nonce( KDNA_AB_Subscribe::NONCE_ACTION ),
+				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+				'nonce'            => wp_create_nonce( KDNA_AB_Subscribe::NONCE_ACTION ),
+				'archiveNonce'     => wp_create_nonce( 'kdna_ab_archive' ),
 				'recaptchaSiteKey' => $site_key,
-				'i18n'            => KDNA_AB_Subscribe::messages(),
+				'i18n'             => KDNA_AB_Subscribe::messages(),
 			)
 		);
 	}
