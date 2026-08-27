@@ -401,6 +401,83 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</div>
 
 	<?php /* ------------------------------------------------------------------ */ ?>
+	<?php /* Stage 9, weekly digest.                                           */ ?>
+	<?php /* ------------------------------------------------------------------ */ ?>
+
+	<div class="kdna-ab-card">
+		<h2 class="kdna-ab-card__heading"><?php esc_html_e( 'Weekly digest', 'kdna-article-broadcast' ); ?></h2>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'Once a week the plugin gathers everything published since the last digest, builds a roundup draft and emails you to approve it. Nothing is sent until you approve.', 'kdna-article-broadcast' ); ?>
+		</p>
+
+		<form class="kdna-ab-form" @submit.prevent="saveDigest()">
+
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-digest-day"><?php esc_html_e( 'Day', 'kdna-article-broadcast' ); ?></label>
+					<select id="kdna-ab-digest-day" class="kdna-ab-select" x-model.number="digest.digestDay">
+						<template x-for="(name, index) in digest.days" :key="'day-' + index">
+							<option :value="index" x-text="name"></option>
+						</template>
+					</select>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-digest-time"><?php esc_html_e( 'Time', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-digest-time" type="time" class="kdna-ab-input" x-model="digest.digestTime" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Site timezone.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-digest-max"><?php esc_html_e( 'Maximum posts', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-digest-max" type="number" min="1" step="1" class="small-text" x-model.number="digest.digestMax" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Newest first. Default 6.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-field kdna-ab-field--check">
+				<label><input type="checkbox" x-model="digest.digestOverlap" /> <?php esc_html_e( 'Exclude posts already broadcast individually', 'kdna-article-broadcast' ); ?></label>
+			</div>
+
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-digest-window"><?php esc_html_e( 'Approval window (hours)', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-digest-window" type="number" min="1" step="1" class="small-text" x-model.number="digest.digestWindow" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'If not approved within this window the digest expires. Default 72.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-digest-subject"><?php esc_html_e( 'Digest subject', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-digest-subject" type="text" class="kdna-ab-input" x-model="digest.digestSubject" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'The {date} token is replaced with the send date.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-field">
+				<label class="kdna-ab-field__label" for="kdna-ab-digest-intro"><?php esc_html_e( 'Intro line', 'kdna-article-broadcast' ); ?></label>
+				<textarea id="kdna-ab-digest-intro" class="widefat kdna-ab-input" rows="2" x-model="digest.digestIntro"></textarea>
+				<span class="kdna-ab-field__hint"><?php esc_html_e( 'A short editorial line shown at the top of the digest, if your template has an intro region.', 'kdna-article-broadcast' ); ?></span>
+			</div>
+
+			<p class="kdna-ab-field__hint" x-show="digest.nextRun" x-cloak>
+				<?php esc_html_e( 'Next scheduled digest:', 'kdna-article-broadcast' ); ?> <strong x-text="digest.nextRun"></strong>
+			</p>
+
+			<div class="kdna-ab-actions">
+				<button type="submit" class="button button-primary" :disabled="savingDigest || buildingDigest">
+					<span x-show="! savingDigest"><?php esc_html_e( 'Save digest settings', 'kdna-article-broadcast' ); ?></span>
+					<span x-show="savingDigest" x-cloak><?php esc_html_e( 'Saving...', 'kdna-article-broadcast' ); ?></span>
+				</button>
+				<button type="button" class="button button-secondary" @click="buildDigestNow()" :disabled="savingDigest || buildingDigest">
+					<span x-show="! buildingDigest"><?php esc_html_e( 'Build digest now', 'kdna-article-broadcast' ); ?></span>
+					<span x-show="buildingDigest" x-cloak><?php esc_html_e( 'Building...', 'kdna-article-broadcast' ); ?></span>
+				</button>
+			</div>
+
+			<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (digestResult ? digestResult.type : 'info')" x-show="digestResult" x-cloak role="status" aria-live="polite">
+				<span x-text="digestResult ? digestResult.message : ''"></span>
+			</div>
+		</form>
+	</div>
+
+	<?php /* ------------------------------------------------------------------ */ ?>
 	<?php /* Stage 4, content assembly.                                        */ ?>
 	<?php /* ------------------------------------------------------------------ */ ?>
 
@@ -602,7 +679,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php
 		printf(
 			/* translators: %s: plugin version number. */
-			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 5 complete.', 'kdna-article-broadcast' ),
+			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 9 complete.', 'kdna-article-broadcast' ),
 			esc_html( KDNA_AB_VERSION )
 		);
 		?>

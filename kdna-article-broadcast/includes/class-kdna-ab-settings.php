@@ -107,6 +107,9 @@ class KDNA_AB_Settings {
 
 		// Stage 5.
 		add_action( 'wp_ajax_kdna_ab_save_sending', array( $this, 'ajax_save_sending' ) );
+
+		// Stage 9.
+		add_action( 'wp_ajax_kdna_ab_save_digest', array( $this, 'ajax_save_digest' ) );
 	}
 
 	/*
@@ -376,6 +379,7 @@ class KDNA_AB_Settings {
 			'content'     => $this->content_for_display( $settings ),
 			'metaFields'  => $this->list_public_meta_keys(),
 			'sending'     => $this->sending_for_display( $settings ),
+			'digest'      => $this->digest_for_display( $settings ),
 			'i18n'        => array(
 				'testing'       => __( 'Testing connection...', 'kdna-article-broadcast' ),
 				'saving'        => __( 'Saving...', 'kdna-article-broadcast' ),
@@ -396,6 +400,38 @@ class KDNA_AB_Settings {
 				'chooseImage'   => __( 'Choose placeholder image', 'kdna-article-broadcast' ),
 				'mediaTitle'    => __( 'Select a placeholder image', 'kdna-article-broadcast' ),
 				'mediaButton'   => __( 'Use this image', 'kdna-article-broadcast' ),
+				'digestSaved'   => __( 'Digest settings saved.', 'kdna-article-broadcast' ),
+				'buildingDigest' => __( 'Building digest...', 'kdna-article-broadcast' ),
+			),
+		);
+	}
+
+	/**
+	 * Shapes the Stage 9 digest settings for the browser.
+	 *
+	 * @param array $settings Full settings array.
+	 * @return array
+	 */
+	private function digest_for_display( $settings ) {
+		$next = KDNA_AB_Digest::next_run_timestamp();
+
+		return array(
+			'digestDay'     => (int) $settings['digest_day'],
+			'digestTime'    => (string) $settings['digest_time'],
+			'digestOverlap' => (bool) $settings['digest_overlap'],
+			'digestMax'     => (int) $settings['digest_max'],
+			'digestWindow'  => (int) $settings['digest_window'],
+			'digestSubject' => (string) $settings['digest_subject'],
+			'digestIntro'   => (string) $settings['digest_intro'],
+			'nextRun'       => $next ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $next ) : '',
+			'days'          => array(
+				__( 'Sunday', 'kdna-article-broadcast' ),
+				__( 'Monday', 'kdna-article-broadcast' ),
+				__( 'Tuesday', 'kdna-article-broadcast' ),
+				__( 'Wednesday', 'kdna-article-broadcast' ),
+				__( 'Thursday', 'kdna-article-broadcast' ),
+				__( 'Friday', 'kdna-article-broadcast' ),
+				__( 'Saturday', 'kdna-article-broadcast' ),
 			),
 		);
 	}
@@ -1192,6 +1228,48 @@ class KDNA_AB_Settings {
 			array(
 				'message' => __( 'Sending settings saved.', 'kdna-article-broadcast' ),
 				'sending' => $this->sending_for_display( $settings ),
+			)
+		);
+	}
+
+	/**
+	 * AJAX: saves the weekly digest settings and reschedules the digest.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_digest() {
+		$this->verify_request();
+
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$in  = json_decode( $raw, true );
+
+		if ( ! is_array( $in ) ) {
+			wp_send_json_error( array( 'message' => __( 'The settings could not be read. Please try again.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$settings = $this->get_settings();
+
+		$day = isset( $in['digestDay'] ) ? (int) $in['digestDay'] : 1;
+		$settings['digest_day'] = min( 6, max( 0, $day ) );
+
+		$time = isset( $in['digestTime'] ) ? sanitize_text_field( $in['digestTime'] ) : '09:00';
+		$settings['digest_time'] = preg_match( '/^\d{1,2}:\d{2}$/', $time ) ? $time : '09:00';
+
+		$settings['digest_overlap'] = ! empty( $in['digestOverlap'] );
+		$settings['digest_max']     = isset( $in['digestMax'] ) ? max( 1, absint( $in['digestMax'] ) ) : 6;
+		$settings['digest_window']  = isset( $in['digestWindow'] ) ? max( 1, absint( $in['digestWindow'] ) ) : 72;
+		$settings['digest_subject'] = isset( $in['digestSubject'] ) ? sanitize_text_field( $in['digestSubject'] ) : '';
+		$settings['digest_intro']   = isset( $in['digestIntro'] ) ? sanitize_textarea_field( $in['digestIntro'] ) : '';
+
+		update_option( KDNA_AB_OPTION, $settings );
+
+		// The schedule may have changed, so reschedule the next digest.
+		KDNA_AB_Digest::reschedule();
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Digest settings saved.', 'kdna-article-broadcast' ),
+				'digest'  => $this->digest_for_display( $settings ),
 			)
 		);
 	}

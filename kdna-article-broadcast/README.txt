@@ -154,6 +154,23 @@ This build is delivered in stages. Each stage is individually testable.
   failure occurs after it is dismissed.
 * Fixing the issue and pressing Retry on a log row completes the broadcast.
 
+**Stage 9, weekly digest (this release)**
+
+* A weekly schedule, day and time in the site timezone, that fires on the exact
+  configured day and time and reschedules itself.
+* Gathers qualifying posts published since the last digest, newest first, up to
+  a configurable maximum, with an overlap setting that excludes posts already
+  broadcast individually.
+* Builds a roundup campaign from the digest template repeater, one block per
+  article, plus an optional intro line.
+* Always created as a draft. An approval email is sent with a Campaign Monitor
+  preview link and a nonced Approve and send link. Nothing goes to subscribers
+  until it is approved.
+* A configurable approval window, default seventy-two hours, after which the
+  digest expires and is logged as skipped, leaving the draft intact.
+* A Build digest now button for manual triggering.
+* A week with no qualifying posts creates no digest and logs a skip.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -200,3 +217,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 8: failure handling and retries, WP Cron retries at five, twenty and
   sixty minutes for retryable errors, immediate failure for permanent errors,
   the final failure email and the dismissible dashboard notice.
+* Stage 9: the weekly digest, scheduled roundup built from the digest template
+  repeater, approval email with a nonced approve and send link, expiry window,
+  overlap exclusion, manual build button and no-posts skip.

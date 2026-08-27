@@ -179,6 +179,7 @@ class KDNA_AB_Log {
 			'sent'      => __( 'Sent', 'kdna-article-broadcast' ),
 			'failed'    => __( 'Failed', 'kdna-article-broadcast' ),
 			'cancelled' => __( 'Cancelled', 'kdna-article-broadcast' ),
+			'skipped'   => __( 'Skipped', 'kdna-article-broadcast' ),
 		);
 	}
 
@@ -522,6 +523,8 @@ class KDNA_AB_Log {
 			'retry_failed' => array( 'error', __( 'Retry failed. See the latest log entry for the reason.', 'kdna-article-broadcast' ) ),
 			'cancelled'    => array( 'success', __( 'The held send was cancelled. The draft is still in Campaign Monitor.', 'kdna-article-broadcast' ) ),
 			'deleted'      => array( 'success', __( 'Log entry deleted.', 'kdna-article-broadcast' ) ),
+			'digest_sent'  => array( 'success', __( 'The weekly digest was approved and sent to subscribers.', 'kdna-article-broadcast' ) ),
+			'digest_failed' => array( 'error', __( 'The digest could not be sent. It is still pending, so you can try approving it again once the issue is fixed.', 'kdna-article-broadcast' ) ),
 		);
 
 		if ( ! isset( $map[ $msg ] ) ) {

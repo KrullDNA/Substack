@@ -97,6 +97,12 @@ function kdna_ab_activate() {
 	if ( ! wp_next_scheduled( KDNA_AB_Log::PURGE_HOOK ) ) {
 		wp_schedule_event( time() + DAY_IN_SECONDS, 'daily', KDNA_AB_Log::PURGE_HOOK );
 	}
+
+	// Anchor the digest window to activation, then schedule the first digest.
+	if ( false === get_option( KDNA_AB_Digest::LAST_OPTION, false ) ) {
+		add_option( KDNA_AB_Digest::LAST_OPTION, time() );
+	}
+	KDNA_AB_Digest::reschedule();
 }
 register_activation_hook( __FILE__, 'kdna_ab_activate' );
 
@@ -118,6 +124,10 @@ function kdna_ab_deactivate() {
 	// Clear the daily log purge. The log table itself is left in place, it is
 	// only removed on uninstall.
 	wp_clear_scheduled_hook( 'kdna_ab_purge_log' );
+
+	// Clear the weekly digest schedule and any pending expiry events.
+	wp_clear_scheduled_hook( 'kdna_ab_run_digest' );
+	wp_clear_scheduled_hook( 'kdna_ab_expire_digest' );
 }
 register_deactivation_hook( __FILE__, 'kdna_ab_deactivate' );
 
@@ -182,6 +192,15 @@ function kdna_ab_default_settings() {
 		// Stage 7, send log retention. Zero keeps everything.
 		'log_retention_months' => 0,
 
+		// Stage 9, weekly digest.
+		'digest_day'          => 1,
+		'digest_time'         => '09:00',
+		'digest_overlap'      => true,
+		'digest_max'          => 6,
+		'digest_window'       => 72,
+		'digest_subject'      => 'This week\'s articles',
+		'digest_intro'        => '',
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
@@ -229,6 +248,9 @@ function kdna_ab_bootstrap() {
 
 	// The retry handler owns the retry cron, the failure email and the notice.
 	KDNA_AB_Retry::instance();
+
+	// The weekly digest owns its schedule, approval and expiry cron.
+	KDNA_AB_Digest::instance();
 
 	// The send log runs the purge cron everywhere and the admin screen in admin.
 	KDNA_AB_Log::instance();

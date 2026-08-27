@@ -26,6 +26,8 @@ if ( is_array( $kdna_ab_settings ) && ! empty( $kdna_ab_settings['delete_on_unin
 	delete_option( 'kdna_ab_db_version' );
 	delete_option( 'kdna_ab_failures' );
 	delete_option( 'kdna_ab_failures_seq' );
+	delete_option( 'kdna_ab_last_digest' );
+	delete_option( 'kdna_ab_pending_digests' );
 
 	// Remove the send log table. This happens on uninstall only, never on
 	// deactivate, and only when the delete on uninstall setting is on.

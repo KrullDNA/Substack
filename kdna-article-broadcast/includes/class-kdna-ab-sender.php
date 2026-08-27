@@ -863,6 +863,55 @@ class KDNA_AB_Sender {
 	}
 
 	/**
+	 * Retries a failed digest send from a log row.
+	 *
+	 * @param array $row Log row.
+	 * @return true|WP_Error
+	 */
+	private static function retry_digest( $row ) {
+		$campaign_id = (string) $row['campaign_id'];
+
+		if ( '' === $campaign_id ) {
+			return new WP_Error( 'kdna_ab_retry_unsupported', __( 'This digest cannot be retried. Build a new digest instead.', 'kdna-article-broadcast' ) );
+		}
+
+		$settings = kdna_ab_get_settings();
+		$sent     = kdna_ab_api()->send_campaign( $campaign_id, self::notify_address() );
+
+		if ( is_wp_error( $sent ) ) {
+			KDNA_AB_Log::add(
+				array(
+					'post_title'  => __( 'Weekly digest', 'kdna-article-broadcast' ),
+					'type'        => 'digest',
+					'status'      => 'failed',
+					'campaign_id' => $campaign_id,
+					'list_id'     => $settings['list_id'],
+					'mode'        => 'digest',
+					'message'     => $sent->get_error_message(),
+				)
+			);
+			return $sent;
+		}
+
+		KDNA_AB_Log::add(
+			array(
+				'post_title'  => __( 'Weekly digest', 'kdna-article-broadcast' ),
+				'type'        => 'digest',
+				'status'      => 'sent',
+				'campaign_id' => $campaign_id,
+				'list_id'     => $settings['list_id'],
+				'recipients'  => self::estimate_recipients( $settings['list_id'] ),
+				'mode'        => 'digest',
+				'message'     => __( 'Digest sent from the send log.', 'kdna-article-broadcast' ),
+			)
+		);
+
+		KDNA_AB_Digest::clear_pending( $campaign_id );
+
+		return true;
+	}
+
+	/**
 	 * Retries a broadcast from a log row, for the manual Retry action.
 	 *
 	 * @param array $row Log row.
@@ -875,6 +924,10 @@ class KDNA_AB_Sender {
 		if ( 'test' === $type ) {
 			$result = self::send_test( $post_id );
 			return is_wp_error( $result ) ? $result : true;
+		}
+
+		if ( 'digest' === $type ) {
+			return self::retry_digest( $row );
 		}
 
 		if ( 'article' !== $type ) {

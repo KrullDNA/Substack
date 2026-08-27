@@ -106,6 +106,12 @@
 			savingSending: false,
 			sendingResult: null,
 
+			// Stage 9 state.
+			digest: JSON.parse( JSON.stringify( kdnaAb.digest || {} ) ),
+			savingDigest: false,
+			buildingDigest: false,
+			digestResult: null,
+
 			/**
 			 * True while a Stage 1 request is in flight.
 			 *
@@ -712,6 +718,73 @@
 					}.bind( this ) )
 					.finally( function () {
 						this.savingSending = false;
+					}.bind( this ) );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 9, weekly digest
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Saves the digest settings.
+			 *
+			 * @return {void}
+			 */
+			saveDigest: function () {
+				if ( this.savingDigest || this.buildingDigest ) {
+					return;
+				}
+
+				this.savingDigest = true;
+				this.digestResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				request( 'kdna_ab_save_digest', { payload: JSON.stringify( this.digest ) } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.digestResult = { type: 'success', message: payload.data.message };
+							if ( payload.data.digest ) {
+								this.digest = Object.assign( {}, this.digest, payload.data.digest );
+							}
+						} else {
+							this.digestResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.digestResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.savingDigest = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Builds a digest immediately.
+			 *
+			 * @return {void}
+			 */
+			buildDigestNow: function () {
+				if ( this.savingDigest || this.buildingDigest ) {
+					return;
+				}
+
+				this.buildingDigest = true;
+				this.digestResult = { type: 'info', message: kdnaAb.i18n.buildingDigest };
+
+				request( 'kdna_ab_build_digest_now', {} )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.digestResult = { type: 'success', message: payload.data.message };
+						} else {
+							this.digestResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.digestResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.buildingDigest = false;
 					}.bind( this ) );
 			},
 
