@@ -139,6 +139,21 @@ This build is delivered in stages. Each stage is individually testable.
 * The table is removed on uninstall only when the delete on uninstall setting
   is on, never on deactivate.
 
+**Stage 8, failure handling and retries (this release)**
+
+* A failed API call is retried by WP Cron three times over an hour, at five,
+  twenty and sixty minutes after the first failure.
+* Only retryable errors are retried, such as timeouts, rate limits and server
+  errors. Permanent errors, such as an invalid API key or a deleted template,
+  fail immediately with no retry.
+* Every attempt is logged with its attempt number.
+* After the final failure, permanent or retries exhausted, an admin email is
+  sent with the post title, the error and a direct link to the log entry.
+* A dismissible dashboard notice appears whenever there is an unresolved
+  failure, linking to the failed rows in the send log, and returns if a new
+  failure occurs after it is dismissed.
+* Fixing the issue and pressing Retry on a log row completes the broadcast.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -182,3 +197,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 7: the send log, a custom table logging every attempt, and a
   WP_List_Table admin screen with filtering, search, pagination, retention and
   the view, retry, cancel and view response row actions.
+* Stage 8: failure handling and retries, WP Cron retries at five, twenty and
+  sixty minutes for retryable errors, immediate failure for permanent errors,
+  the final failure email and the dismissible dashboard notice.

@@ -159,6 +159,9 @@ class KDNA_AB_Sender {
 		$settings = kdna_ab_get_settings();
 		$mode     = self::normalise_mode( $settings['send_mode'] );
 
+		// Fresh broadcast, clear any retry counters or failure flag from before.
+		KDNA_AB_Retry::instance()->clear_state( $post_id );
+
 		$this->create_campaign( $post_id, $mode );
 	}
 
@@ -179,8 +182,7 @@ class KDNA_AB_Sender {
 		$assembled = KDNA_AB_Content::assemble( $post_id );
 
 		if ( is_wp_error( $assembled ) ) {
-			KDNA_AB_Meta_Box::record_failure( $post_id, $assembled->get_error_message(), time() );
-			self::log_attempt( $post_id, 'article', 'failed', '', $mode, $assembled->get_error_message() );
+			KDNA_AB_Retry::instance()->on_failure( $post_id, $assembled, $mode, '' );
 			return;
 		}
 
@@ -190,20 +192,21 @@ class KDNA_AB_Sender {
 		$campaign_id = kdna_ab_api()->create_campaign_from_template( $settings['client_id'], $payload );
 
 		if ( is_wp_error( $campaign_id ) ) {
-			// Stage 8 adds retries. For now the failure is recorded.
-			KDNA_AB_Meta_Box::record_failure( $post_id, $campaign_id->get_error_message(), time() );
-			self::log_attempt( $post_id, 'article', 'failed', '', $mode, $campaign_id->get_error_message() );
+			KDNA_AB_Retry::instance()->on_failure( $post_id, $campaign_id, $mode, '' );
 			return;
 		}
 
 		$campaign_id = trim( (string) $campaign_id );
 
 		if ( '' === $campaign_id ) {
-			$message = __( 'Campaign Monitor did not return a campaign ID.', 'kdna-article-broadcast' );
-			KDNA_AB_Meta_Box::record_failure( $post_id, $message, time() );
-			self::log_attempt( $post_id, 'article', 'failed', '', $mode, $message );
+			$error = new WP_Error( 'kdna_ab_no_campaign', __( 'Campaign Monitor did not return a campaign ID.', 'kdna-article-broadcast' ) );
+			KDNA_AB_Retry::instance()->on_failure( $post_id, $error, $mode, '' );
 			return;
 		}
+
+		// The campaign was created, so the create phase succeeded. This clears any
+		// create-phase retry counter and failure flag before the send phase.
+		KDNA_AB_Retry::instance()->on_success( $post_id );
 
 		if ( 'auto' === $mode ) {
 			$this->do_auto_send( $post_id, $campaign_id );
@@ -232,19 +235,13 @@ class KDNA_AB_Sender {
 
 		if ( is_wp_error( $sent ) ) {
 			// The draft exists in Campaign Monitor, only the send failed.
-			$message = sprintf(
-				/* translators: %s: error message. */
-				__( 'Draft created but the send failed: %s', 'kdna-article-broadcast' ),
-				$sent->get_error_message()
-			);
-			KDNA_AB_Meta_Box::record_failure( $post_id, $message, time() );
-			self::log_attempt( $post_id, 'article', 'failed', $campaign_id, 'auto', $message );
-			$this->notify_admin( $post_id, $campaign_id, 'auto_failed' );
+			KDNA_AB_Retry::instance()->on_failure( $post_id, $sent, 'auto', $campaign_id );
 			return;
 		}
 
 		KDNA_AB_Meta_Box::record_campaign( $post_id, $campaign_id, 'sent', 'auto', time() );
 		self::log_attempt( $post_id, 'article', 'sent', $campaign_id, 'auto' );
+		KDNA_AB_Retry::instance()->on_success( $post_id );
 		$this->notify_admin( $post_id, $campaign_id, 'sent' );
 	}
 
@@ -297,19 +294,13 @@ class KDNA_AB_Sender {
 		$sent = kdna_ab_api()->send_campaign( $campaign_id, self::notify_address() );
 
 		if ( is_wp_error( $sent ) ) {
-			$message = sprintf(
-				/* translators: %s: error message. */
-				__( 'Hold window ended but the send failed: %s', 'kdna-article-broadcast' ),
-				$sent->get_error_message()
-			);
-			KDNA_AB_Meta_Box::record_failure( $post_id, $message, time() );
-			self::log_attempt( $post_id, 'article', 'failed', $campaign_id, 'hold', $message );
-			$this->notify_admin( $post_id, $campaign_id, 'auto_failed' );
+			KDNA_AB_Retry::instance()->on_failure( $post_id, $sent, 'hold', $campaign_id );
 			return;
 		}
 
 		KDNA_AB_Meta_Box::record_campaign( $post_id, $campaign_id, 'sent', 'hold', time() );
 		self::log_attempt( $post_id, 'article', 'sent', $campaign_id, 'hold' );
+		KDNA_AB_Retry::instance()->on_success( $post_id );
 		$this->notify_admin( $post_id, $campaign_id, 'sent' );
 	}
 
@@ -743,27 +734,32 @@ class KDNA_AB_Sender {
 	/**
 	 * Records a log entry for an attempt.
 	 *
-	 * @param int         $post_id     Post ID.
-	 * @param string      $type        article, digest or test.
-	 * @param string      $status      Status.
-	 * @param string      $campaign_id Campaign ID, if any.
-	 * @param string      $mode        Send mode used.
-	 * @param string      $message     Message or error.
-	 * @param int|null    $recipients  Recipient count, or null to estimate from the list.
-	 * @return void
+	 * @param int      $post_id     Post ID.
+	 * @param string   $type        article, digest or test.
+	 * @param string   $status      Status.
+	 * @param string   $campaign_id Campaign ID, if any.
+	 * @param string   $mode        Send mode used.
+	 * @param string   $message     Message or error.
+	 * @param int|null $recipients  Recipient count, or null to estimate from the list.
+	 * @param int|null $attempt     Attempt number, or null to derive from the retry counter.
+	 * @return int Insert ID, or 0.
 	 */
-	private static function log_attempt( $post_id, $type, $status, $campaign_id, $mode, $message = '', $recipients = null ) {
+	public static function log_attempt( $post_id, $type, $status, $campaign_id, $mode, $message = '', $recipients = null, $attempt = null ) {
 		if ( ! class_exists( 'KDNA_AB_Log' ) ) {
-			return;
+			return 0;
 		}
 
 		$settings = kdna_ab_get_settings();
 
 		if ( null === $recipients ) {
-			$recipients = self::estimate_recipients( $settings['list_id'] );
+			$recipients = ( 'test' === $type ) ? 0 : self::estimate_recipients( $settings['list_id'] );
 		}
 
-		KDNA_AB_Log::add(
+		if ( null === $attempt ) {
+			$attempt = class_exists( 'KDNA_AB_Retry' ) ? KDNA_AB_Retry::current_attempt( $post_id ) : 1;
+		}
+
+		return KDNA_AB_Log::add(
 			array(
 				'post_id'     => $post_id,
 				'post_title'  => get_the_title( $post_id ),
@@ -774,6 +770,7 @@ class KDNA_AB_Sender {
 				'recipients'  => (int) $recipients,
 				'mode'        => $mode,
 				'message'     => $message,
+				'attempt'     => (int) $attempt,
 			)
 		);
 	}
@@ -811,10 +808,62 @@ class KDNA_AB_Sender {
 	}
 
 	/**
-	 * Retries a broadcast from a log row.
+	 * Sends an existing campaign and records the outcome on success.
 	 *
-	 * If the campaign already exists it is re-sent, otherwise it is recreated. A
-	 * test row re-runs the test.
+	 * On failure the error is returned so the caller can route it into the retry
+	 * cycle. On success it records the send, logs it, clears the retry state and
+	 * notifies.
+	 *
+	 * @param int    $post_id     Post ID.
+	 * @param string $campaign_id Campaign ID.
+	 * @param string $mode        Send mode.
+	 * @return true|WP_Error
+	 */
+	private function attempt_send( $post_id, $campaign_id, $mode ) {
+		$sent = kdna_ab_api()->send_campaign( $campaign_id, self::notify_address() );
+
+		if ( is_wp_error( $sent ) ) {
+			return $sent;
+		}
+
+		KDNA_AB_Meta_Box::record_campaign( $post_id, $campaign_id, 'sent', $mode, time() );
+		self::log_attempt( $post_id, 'article', 'sent', $campaign_id, $mode );
+		KDNA_AB_Retry::instance()->on_success( $post_id );
+		$this->notify_admin( $post_id, $campaign_id, 'sent' );
+
+		return true;
+	}
+
+	/**
+	 * Runs a scheduled retry, called from the cron hook via KDNA_AB_Retry.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	public static function retry_now( $post_id ) {
+		$post_id     = (int) $post_id;
+		$campaign_id = (string) get_post_meta( $post_id, KDNA_AB_Meta_Box::META_CAMPAIGN_ID, true );
+
+		if ( '' !== $campaign_id ) {
+			// The campaign exists, so re-send it rather than create a duplicate.
+			$mode   = (string) get_post_meta( $post_id, KDNA_AB_Meta_Box::META_MODE, true );
+			$mode   = '' !== $mode ? $mode : 'auto';
+			$result = self::instance()->attempt_send( $post_id, $campaign_id, $mode );
+
+			if ( is_wp_error( $result ) ) {
+				KDNA_AB_Retry::instance()->on_failure( $post_id, $result, $mode, $campaign_id );
+			}
+
+			return;
+		}
+
+		// No campaign yet, recreate. create_campaign self-manages its outcome.
+		$settings = kdna_ab_get_settings();
+		self::instance()->create_campaign( $post_id, self::normalise_mode( $settings['send_mode'] ) );
+	}
+
+	/**
+	 * Retries a broadcast from a log row, for the manual Retry action.
 	 *
 	 * @param array $row Log row.
 	 * @return true|WP_Error
@@ -835,26 +884,24 @@ class KDNA_AB_Sender {
 		$campaign_id = (string) get_post_meta( $post_id, KDNA_AB_Meta_Box::META_CAMPAIGN_ID, true );
 
 		if ( '' !== $campaign_id ) {
-			// The campaign exists, so re-send it rather than create a duplicate.
-			$mode = '' !== $row['mode'] ? $row['mode'] : 'auto';
-			$sent = kdna_ab_api()->send_campaign( $campaign_id, self::notify_address() );
+			$mode   = '' !== $row['mode'] ? $row['mode'] : 'auto';
+			$result = self::instance()->attempt_send( $post_id, $campaign_id, $mode );
 
-			if ( is_wp_error( $sent ) ) {
-				KDNA_AB_Meta_Box::record_failure( $post_id, $sent->get_error_message(), time() );
-				self::log_attempt( $post_id, 'article', 'failed', $campaign_id, $mode, $sent->get_error_message() );
-				return $sent;
+			if ( is_wp_error( $result ) ) {
+				KDNA_AB_Retry::instance()->on_failure( $post_id, $result, $mode, $campaign_id );
 			}
 
-			KDNA_AB_Meta_Box::record_campaign( $post_id, $campaign_id, 'sent', $mode, time() );
-			self::log_attempt( $post_id, 'article', 'sent', $campaign_id, $mode );
-			return true;
+			return $result;
 		}
 
 		// No campaign yet, recreate from the current settings.
 		$settings = kdna_ab_get_settings();
-		$mode     = self::normalise_mode( $settings['send_mode'] );
+		self::instance()->create_campaign( $post_id, self::normalise_mode( $settings['send_mode'] ) );
 
-		self::instance()->create_campaign( $post_id, $mode );
+		// Report success unless the fresh attempt left the post in a failed state.
+		if ( 'failed' === (string) get_post_meta( $post_id, KDNA_AB_Meta_Box::META_STATUS, true ) ) {
+			return new WP_Error( 'kdna_ab_retry_failed', (string) get_post_meta( $post_id, KDNA_AB_Meta_Box::META_STATUS_MESSAGE, true ) );
+		}
 
 		return true;
 	}

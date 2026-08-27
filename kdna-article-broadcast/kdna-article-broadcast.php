@@ -112,6 +112,9 @@ function kdna_ab_deactivate() {
 	// Clear any scheduled hold window sends so nothing fires while inactive.
 	wp_clear_scheduled_hook( 'kdna_ab_hold_send' );
 
+	// Clear any scheduled retries.
+	wp_clear_scheduled_hook( 'kdna_ab_retry_send' );
+
 	// Clear the daily log purge. The log table itself is left in place, it is
 	// only removed on uninstall.
 	wp_clear_scheduled_hook( 'kdna_ab_purge_log' );
@@ -223,6 +226,9 @@ function kdna_ab_bootstrap() {
 	// The sender hooks the publish transition and the hold window cron, which
 	// can fire on the front end and during cron, so it loads everywhere.
 	KDNA_AB_Sender::instance();
+
+	// The retry handler owns the retry cron, the failure email and the notice.
+	KDNA_AB_Retry::instance();
 
 	// The send log runs the purge cron everywhere and the admin screen in admin.
 	KDNA_AB_Log::instance();
