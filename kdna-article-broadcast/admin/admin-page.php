@@ -675,11 +675,88 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</div>
 	</div>
 
+	<?php /* ------------------------------------------------------------------ */ ?>
+	<?php /* Stage 10, signup widget, reCAPTCHA and consent.                   */ ?>
+	<?php /* ------------------------------------------------------------------ */ ?>
+
+	<div class="kdna-ab-card">
+		<h2 class="kdna-ab-card__heading"><?php esc_html_e( 'Signup widget', 'kdna-article-broadcast' ); ?></h2>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'The Elementor signup widget uses Google reCAPTCHA v3 and adds subscribers with double opt-in. Consent metadata is stored against three Campaign Monitor custom fields.', 'kdna-article-broadcast' ); ?>
+		</p>
+
+		<form class="kdna-ab-form" @submit.prevent="saveSignup()">
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'reCAPTCHA v3', 'kdna-article-broadcast' ); ?></h3>
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-rc-site"><?php esc_html_e( 'Site key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-rc-site" type="text" class="kdna-ab-input" x-model="signup.recaptchaSiteKey" autocomplete="off" spellcheck="false" />
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-rc-secret"><?php esc_html_e( 'Secret key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-rc-secret" type="password" class="kdna-ab-input" x-model="signup.recaptchaSecretKey" autocomplete="off" spellcheck="false" :placeholder="signup.hasSecret ? signup.maskedSecret : ''" />
+					<span class="kdna-ab-field__hint" x-show="signup.hasSecret" x-cloak><?php esc_html_e( 'A secret is saved. Leave blank to keep it, or enter a new one to replace it.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-grid">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-rc-threshold"><?php esc_html_e( 'Score threshold', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-rc-threshold" type="number" min="0" max="1" step="0.1" class="small-text" x-model.number="signup.recaptchaThreshold" />
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'Submissions scoring below this are treated as bots. Default 0.5. reCAPTCHA fails open if Google cannot be reached.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label">&nbsp;</label>
+					<button type="button" class="button button-secondary" @click="testRecaptcha()" :disabled="testingRecaptcha">
+						<span x-show="! testingRecaptcha"><?php esc_html_e( 'Test reCAPTCHA', 'kdna-article-broadcast' ); ?></span>
+						<span x-show="testingRecaptcha" x-cloak><?php esc_html_e( 'Running...', 'kdna-article-broadcast' ); ?></span>
+					</button>
+					<span class="kdna-ab-field__hint"><?php esc_html_e( 'A genuine round trip to Google using the entered keys.', 'kdna-article-broadcast' ); ?></span>
+				</div>
+			</div>
+
+			<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (recaptchaResult ? recaptchaResult.type : 'info')" x-show="recaptchaResult" x-cloak role="status" aria-live="polite">
+				<span x-text="recaptchaResult ? recaptchaResult.message : ''"></span>
+			</div>
+
+			<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Consent custom fields', 'kdna-article-broadcast' ); ?></h3>
+			<p class="kdna-ab-card__intro">
+				<?php esc_html_e( 'The Campaign Monitor custom field keys that store the signup date, IP address and page. These must match the custom fields created on your list.', 'kdna-article-broadcast' ); ?>
+			</p>
+			<div class="kdna-ab-grid kdna-ab-grid--three">
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-cf-date"><?php esc_html_e( 'Signup date key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-cf-date" type="text" class="kdna-ab-input" x-model="signup.cfDateKey" />
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-cf-ip"><?php esc_html_e( 'Signup IP key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-cf-ip" type="text" class="kdna-ab-input" x-model="signup.cfIpKey" />
+				</div>
+				<div class="kdna-ab-field">
+					<label class="kdna-ab-field__label" for="kdna-ab-cf-page"><?php esc_html_e( 'Signup page key', 'kdna-article-broadcast' ); ?></label>
+					<input id="kdna-ab-cf-page" type="text" class="kdna-ab-input" x-model="signup.cfPageKey" />
+				</div>
+			</div>
+
+			<div class="kdna-ab-actions">
+				<button type="submit" class="button button-primary" :disabled="savingSignup">
+					<span x-show="! savingSignup"><?php esc_html_e( 'Save signup settings', 'kdna-article-broadcast' ); ?></span>
+					<span x-show="savingSignup" x-cloak><?php esc_html_e( 'Saving...', 'kdna-article-broadcast' ); ?></span>
+				</button>
+			</div>
+
+			<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (signupResult ? signupResult.type : 'info')" x-show="signupResult" x-cloak role="status" aria-live="polite">
+				<span x-text="signupResult ? signupResult.message : ''"></span>
+			</div>
+		</form>
+	</div>
+
 	<p class="kdna-ab-footnote">
 		<?php
 		printf(
 			/* translators: %s: plugin version number. */
-			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 9 complete.', 'kdna-article-broadcast' ),
+			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 10 complete.', 'kdna-article-broadcast' ),
 			esc_html( KDNA_AB_VERSION )
 		);
 		?>

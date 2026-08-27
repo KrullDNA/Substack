@@ -110,6 +110,10 @@ class KDNA_AB_Settings {
 
 		// Stage 9.
 		add_action( 'wp_ajax_kdna_ab_save_digest', array( $this, 'ajax_save_digest' ) );
+
+		// Stage 10.
+		add_action( 'wp_ajax_kdna_ab_save_signup', array( $this, 'ajax_save_signup' ) );
+		add_action( 'wp_ajax_kdna_ab_test_recaptcha', array( $this, 'ajax_test_recaptcha' ) );
 	}
 
 	/*
@@ -380,6 +384,7 @@ class KDNA_AB_Settings {
 			'metaFields'  => $this->list_public_meta_keys(),
 			'sending'     => $this->sending_for_display( $settings ),
 			'digest'      => $this->digest_for_display( $settings ),
+			'signup'      => $this->signup_for_display( $settings ),
 			'i18n'        => array(
 				'testing'       => __( 'Testing connection...', 'kdna-article-broadcast' ),
 				'saving'        => __( 'Saving...', 'kdna-article-broadcast' ),
@@ -402,7 +407,33 @@ class KDNA_AB_Settings {
 				'mediaButton'   => __( 'Use this image', 'kdna-article-broadcast' ),
 				'digestSaved'   => __( 'Digest settings saved.', 'kdna-article-broadcast' ),
 				'buildingDigest' => __( 'Building digest...', 'kdna-article-broadcast' ),
+				'signupSaved'   => __( 'Signup settings saved.', 'kdna-article-broadcast' ),
+				'testingRecaptcha' => __( 'Running reCAPTCHA...', 'kdna-article-broadcast' ),
+				'recaptchaRunError' => __( 'reCAPTCHA could not run in the browser. Check the site key.', 'kdna-article-broadcast' ),
+				'enterSiteKey'  => __( 'Enter a site key first.', 'kdna-article-broadcast' ),
 			),
+		);
+	}
+
+	/**
+	 * Shapes the Stage 10 signup settings for the browser.
+	 *
+	 * The reCAPTCHA secret is never sent to the browser, only a masked hint.
+	 *
+	 * @param array $settings Full settings array.
+	 * @return array
+	 */
+	private function signup_for_display( $settings ) {
+		$secret = KDNA_AB_Crypto::decrypt( $settings['recaptcha_secret_key'] );
+
+		return array(
+			'recaptchaSiteKey'   => (string) $settings['recaptcha_site_key'],
+			'hasSecret'          => ( '' !== $secret ),
+			'maskedSecret'       => KDNA_AB_Crypto::mask( $secret ),
+			'recaptchaThreshold' => (float) $settings['recaptcha_threshold'],
+			'cfDateKey'          => (string) $settings['cf_date_key'],
+			'cfIpKey'            => (string) $settings['cf_ip_key'],
+			'cfPageKey'          => (string) $settings['cf_page_key'],
 		);
 	}
 
@@ -1271,6 +1302,109 @@ class KDNA_AB_Settings {
 				'message' => __( 'Digest settings saved.', 'kdna-article-broadcast' ),
 				'digest'  => $this->digest_for_display( $settings ),
 			)
+		);
+	}
+
+	/**
+	 * AJAX: saves the signup and reCAPTCHA settings.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_signup() {
+		$this->verify_request();
+
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$in  = json_decode( $raw, true );
+
+		if ( ! is_array( $in ) ) {
+			wp_send_json_error( array( 'message' => __( 'The settings could not be read. Please try again.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$settings = $this->get_settings();
+
+		$settings['recaptcha_site_key'] = isset( $in['recaptchaSiteKey'] ) ? sanitize_text_field( $in['recaptchaSiteKey'] ) : '';
+
+		// Only replace the stored secret when a new one is entered.
+		$secret_raw = isset( $in['recaptchaSecretKey'] ) ? sanitize_text_field( $in['recaptchaSecretKey'] ) : '';
+		if ( '' !== $secret_raw ) {
+			$settings['recaptcha_secret_key'] = KDNA_AB_Crypto::encrypt( $secret_raw );
+		}
+
+		$threshold = isset( $in['recaptchaThreshold'] ) ? (float) $in['recaptchaThreshold'] : 0.5;
+		$settings['recaptcha_threshold'] = min( 1.0, max( 0.0, $threshold ) );
+
+		$settings['cf_date_key'] = isset( $in['cfDateKey'] ) ? sanitize_text_field( $in['cfDateKey'] ) : '';
+		$settings['cf_ip_key']   = isset( $in['cfIpKey'] ) ? sanitize_text_field( $in['cfIpKey'] ) : '';
+		$settings['cf_page_key'] = isset( $in['cfPageKey'] ) ? sanitize_text_field( $in['cfPageKey'] ) : '';
+
+		update_option( KDNA_AB_OPTION, $settings );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Signup settings saved.', 'kdna-article-broadcast' ),
+				'signup'  => $this->signup_for_display( $settings ),
+			)
+		);
+	}
+
+	/**
+	 * AJAX: performs a genuine reCAPTCHA verify round trip.
+	 *
+	 * @return void
+	 */
+	public function ajax_test_recaptcha() {
+		$this->verify_request();
+
+		$token         = isset( $_POST['token'] ) ? sanitize_text_field( wp_unslash( $_POST['token'] ) ) : '';
+		$secret_posted = isset( $_POST['secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['secret_key'] ) ) : '';
+
+		$secret = ( '' !== $secret_posted ) ? $secret_posted : KDNA_AB_Crypto::decrypt( $this->get_settings()['recaptcha_secret_key'] );
+
+		if ( '' === $secret ) {
+			wp_send_json_error( array( 'message' => __( 'Enter a secret key first.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		if ( '' === $token ) {
+			wp_send_json_error( array( 'message' => __( 'No reCAPTCHA token was produced in the browser.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		$result = KDNA_AB_Subscribe::verify_recaptcha( $token, $secret );
+
+		if ( ! $result['reached'] ) {
+			wp_send_json_error( array( 'message' => __( 'Could not reach Google to verify the keys.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		if ( $result['success'] ) {
+			wp_send_json_success(
+				array(
+					'message' => sprintf(
+						/* translators: %s: reCAPTCHA score. */
+						__( 'reCAPTCHA verified. Google returned a score of %s.', 'kdna-article-broadcast' ),
+						null !== $result['score'] ? number_format_i18n( $result['score'], 2 ) : '1.00'
+					),
+				)
+			);
+		}
+
+		$errors = $result['errors'];
+
+		if ( in_array( 'invalid-input-secret', $errors, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'The secret key is invalid. Check it and try again.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		if ( in_array( 'invalid-input-response', $errors, true ) || in_array( 'timeout-or-duplicate', $errors, true ) ) {
+			wp_send_json_error( array( 'message' => __( 'The secret key reached Google, but the token was not accepted. Run the test again.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		wp_send_json_error(
+			array(
+				'message' => sprintf(
+					/* translators: %s: comma separated error codes. */
+					__( 'reCAPTCHA test failed: %s', 'kdna-article-broadcast' ),
+					! empty( $errors ) ? implode( ', ', array_map( 'sanitize_text_field', $errors ) ) : __( 'unknown error', 'kdna-article-broadcast' )
+				),
+			),
+			200
 		);
 	}
 

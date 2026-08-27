@@ -171,6 +171,26 @@ This build is delivered in stages. Each stage is individually testable.
 * A Build digest now button for manual triggering.
 * A week with no qualifying posts creates no digest and logs a skip.
 
+**Stage 10, signup widget functionality (this release)**
+
+* An Elementor widget, slug kdna-newsletter-subscribe, in the KDNA Tools
+  category, with name and email fields and a stacked or inline layout switcher
+  that is responsive per breakpoint.
+* AJAX submission with a nonce and full server side validation, with specific
+  messages for an invalid email, an already subscribed address, a network
+  failure and a reCAPTCHA failure.
+* Double opt-in: the subscriber is added to Campaign Monitor, which sends its
+  confirmation email; only confirmed subscribers count.
+* Consent captured on submit, with the timestamp, IP address and source page
+  passed to Campaign Monitor as three configurable custom fields.
+* Google reCAPTCHA v3 with a genuine round trip connection test on the settings
+  page, plus an invisible honeypot as a second layer. reCAPTCHA fails open: if
+  it cannot run or Google cannot be reached, the submission is allowed.
+* A per instance success behaviour switcher: an inline message with the form
+  fading out, or a redirect to a chosen page.
+* Assets load only where the widget is present. Markup exposes kdna- prefixed
+  classes and CSS custom property hooks, ready for the Stage 11 style controls.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -220,3 +240,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 9: the weekly digest, scheduled roundup built from the digest template
   repeater, approval email with a nonced approve and send link, expiry window,
   overlap exclusion, manual build button and no-posts skip.
+* Stage 10: the Elementor signup widget functionality, double opt-in, reCAPTCHA
+  v3 with a real connection test and honeypot, consent metadata custom fields,
+  the layout and success behaviour switchers, and AJAX submission.

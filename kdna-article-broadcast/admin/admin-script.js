@@ -43,6 +43,39 @@
 		} );
 	}
 
+	// Tracks which reCAPTCHA site keys have been loaded, for the test button.
+	var loadedRecaptchaKeys = {};
+
+	/**
+	 * Loads the reCAPTCHA v3 script for a site key, resolving when ready.
+	 *
+	 * @param {string} siteKey The reCAPTCHA site key.
+	 * @return {Promise}
+	 */
+	function loadRecaptcha( siteKey ) {
+		return new Promise( function ( resolve, reject ) {
+			if ( window.grecaptcha && loadedRecaptchaKeys[ siteKey ] ) {
+				window.grecaptcha.ready( resolve );
+				return;
+			}
+
+			var script = document.createElement( 'script' );
+			script.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent( siteKey );
+			script.async = true;
+			script.defer = true;
+			script.onload = function () {
+				loadedRecaptchaKeys[ siteKey ] = true;
+				if ( window.grecaptcha ) {
+					window.grecaptcha.ready( resolve );
+				} else {
+					reject();
+				}
+			};
+			script.onerror = reject;
+			document.head.appendChild( script );
+		} );
+	}
+
 	/**
 	 * Finds an item by id in a list of { id, name } objects.
 	 *
@@ -111,6 +144,13 @@
 			savingDigest: false,
 			buildingDigest: false,
 			digestResult: null,
+
+			// Stage 10 state.
+			signup: Object.assign( { recaptchaSecretKey: '' }, JSON.parse( JSON.stringify( kdnaAb.signup || {} ) ) ),
+			savingSignup: false,
+			signupResult: null,
+			testingRecaptcha: false,
+			recaptchaResult: null,
 
 			/**
 			 * True while a Stage 1 request is in flight.
@@ -786,6 +826,87 @@
 					.finally( function () {
 						this.buildingDigest = false;
 					}.bind( this ) );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 10, signup and reCAPTCHA
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Saves the signup settings.
+			 *
+			 * @return {void}
+			 */
+			saveSignup: function () {
+				if ( this.savingSignup ) {
+					return;
+				}
+
+				this.savingSignup = true;
+				this.signupResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				request( 'kdna_ab_save_signup', { payload: JSON.stringify( this.signup ) } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.signupResult = { type: 'success', message: payload.data.message };
+							if ( payload.data.signup ) {
+								this.signup = Object.assign( {}, this.signup, payload.data.signup );
+								this.signup.recaptchaSecretKey = '';
+							}
+						} else {
+							this.signupResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.signupResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) )
+					.finally( function () {
+						this.savingSignup = false;
+					}.bind( this ) );
+			},
+
+			/**
+			 * Runs a genuine reCAPTCHA round trip with the entered keys.
+			 *
+			 * @return {void}
+			 */
+			testRecaptcha: function () {
+				if ( this.testingRecaptcha ) {
+					return;
+				}
+
+				if ( ! this.signup.recaptchaSiteKey ) {
+					this.recaptchaResult = { type: 'error', message: kdnaAb.i18n.enterSiteKey };
+					return;
+				}
+
+				this.testingRecaptcha = true;
+				this.recaptchaResult = { type: 'info', message: kdnaAb.i18n.testingRecaptcha };
+
+				var self = this;
+
+				loadRecaptcha( this.signup.recaptchaSiteKey )
+					.then( function () {
+						return window.grecaptcha.execute( self.signup.recaptchaSiteKey, { action: 'test' } );
+					} )
+					.then( function ( token ) {
+						return request( 'kdna_ab_test_recaptcha', { token: token, secret_key: self.signup.recaptchaSecretKey || '' } );
+					} )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							self.recaptchaResult = { type: 'success', message: payload.data.message };
+						} else {
+							self.recaptchaResult = { type: 'error', message: self.messageFrom( payload ) };
+						}
+					} )
+					.catch( function () {
+						self.recaptchaResult = { type: 'error', message: kdnaAb.i18n.recaptchaRunError };
+					} )
+					.finally( function () {
+						self.testingRecaptcha = false;
+					} );
 			},
 
 			/*

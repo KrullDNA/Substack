@@ -201,6 +201,14 @@ function kdna_ab_default_settings() {
 		'digest_subject'      => 'This week\'s articles',
 		'digest_intro'        => '',
 
+		// Stage 10, signup widget. reCAPTCHA and consent metadata.
+		'recaptcha_site_key'  => '',
+		'recaptcha_secret_key' => '',
+		'recaptcha_threshold' => 0.5,
+		'cf_date_key'         => 'SignupDate',
+		'cf_ip_key'           => 'SignupIP',
+		'cf_page_key'         => 'SignupPage',
+
 		// Off by default, honoured by uninstall.php. The setting UI arrives in a later stage.
 		'delete_on_uninstall' => false,
 	);
@@ -251,6 +259,12 @@ function kdna_ab_bootstrap() {
 
 	// The weekly digest owns its schedule, approval and expiry cron.
 	KDNA_AB_Digest::instance();
+
+	// The signup handler registers the front end AJAX for logged in and out users.
+	KDNA_AB_Subscribe::instance();
+
+	// The Elementor loader registers the category, widgets and front end assets.
+	KDNA_AB_Elementor::instance();
 
 	// The send log runs the purge cron everywhere and the admin screen in admin.
 	KDNA_AB_Log::instance();

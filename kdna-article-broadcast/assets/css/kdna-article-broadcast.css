@@ -1,11 +1,194 @@
 /**
  * KDNA Article Broadcast, front end styling.
  *
- * The signup and archive widgets add their styles here in later stages. All
- * front end styling is driven by kdna- prefixed CSS custom properties, and this
- * file is only enqueued where a widget is actually present.
+ * Stage 10 provides the structural layout for the subscribe widget, the
+ * stacked and inline switch, the honeypot hide and the message and loading
+ * states. Every value is driven by a kdna- prefixed CSS custom property with a
+ * sensible default, so the Stage 11 Elementor controls can set the properties
+ * without any hard-coded values being in the way.
  *
- * Populated from Stage 10 onwards.
+ * No selector targets elementor-widget-container.
  *
  * @package KDNA_Article_Broadcast
  */
+
+.kdna-ab-subscribe {
+	--kdna-subscribe-gap: 12px;
+	--kdna-subscribe-field-gap: 4px;
+	--kdna-subscribe-max-width: none;
+	--kdna-subscribe-heading-size: 1.25rem;
+	--kdna-subscribe-heading-colour: inherit;
+	--kdna-subscribe-description-colour: inherit;
+	--kdna-subscribe-label-colour: inherit;
+	--kdna-subscribe-input-bg: #ffffff;
+	--kdna-subscribe-input-colour: #1a1a1a;
+	--kdna-subscribe-input-border-colour: #cccccc;
+	--kdna-subscribe-input-border-width: 1px;
+	--kdna-subscribe-input-radius: 4px;
+	--kdna-subscribe-input-padding: 10px 12px;
+	--kdna-subscribe-input-min-height: 44px;
+	--kdna-subscribe-button-bg: #1a1a1a;
+	--kdna-subscribe-button-colour: #ffffff;
+	--kdna-subscribe-button-radius: 4px;
+	--kdna-subscribe-button-padding: 10px 18px;
+	--kdna-subscribe-success-colour: #1a6c2b;
+	--kdna-subscribe-error-colour: #9a1b1d;
+
+	max-width: var(--kdna-subscribe-max-width);
+}
+
+.kdna-ab-subscribe__heading {
+	font-size: var(--kdna-subscribe-heading-size);
+	color: var(--kdna-subscribe-heading-colour);
+	margin-bottom: 6px;
+}
+
+.kdna-ab-subscribe__description {
+	color: var(--kdna-subscribe-description-colour);
+	margin-bottom: var(--kdna-subscribe-gap);
+}
+
+.kdna-ab-subscribe__fields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--kdna-subscribe-gap);
+}
+
+.kdna-ab-subscribe__field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--kdna-subscribe-field-gap);
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.kdna-ab-subscribe__label {
+	color: var(--kdna-subscribe-label-colour);
+}
+
+.kdna-ab-subscribe__input {
+	width: 100%;
+	box-sizing: border-box;
+	background: var(--kdna-subscribe-input-bg);
+	color: var(--kdna-subscribe-input-colour);
+	border: var(--kdna-subscribe-input-border-width) solid var(--kdna-subscribe-input-border-colour);
+	border-radius: var(--kdna-subscribe-input-radius);
+	padding: var(--kdna-subscribe-input-padding);
+	min-height: var(--kdna-subscribe-input-min-height);
+}
+
+.kdna-ab-subscribe__actions {
+	display: flex;
+	align-items: flex-end;
+}
+
+.kdna-ab-subscribe__button {
+	cursor: pointer;
+	background: var(--kdna-subscribe-button-bg);
+	color: var(--kdna-subscribe-button-colour);
+	border: 0;
+	border-radius: var(--kdna-subscribe-button-radius);
+	padding: var(--kdna-subscribe-button-padding);
+	min-height: var(--kdna-subscribe-input-min-height);
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.kdna-ab-subscribe__button[disabled] {
+	opacity: 0.7;
+	cursor: default;
+}
+
+/* Loading spinner. */
+
+.kdna-ab-subscribe__spinner {
+	display: none;
+	width: 14px;
+	height: 14px;
+	border: 2px solid currentColor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: kdna-ab-spin 0.7s linear infinite;
+}
+
+.kdna-ab-subscribe__form--loading .kdna-ab-subscribe__spinner {
+	display: inline-block;
+}
+
+@keyframes kdna-ab-spin {
+	to {
+		transform: rotate( 360deg );
+	}
+}
+
+/* Success fade out. */
+
+.kdna-ab-subscribe__form--done .kdna-ab-subscribe__fields,
+.kdna-ab-subscribe__form--done .kdna-ab-subscribe__heading,
+.kdna-ab-subscribe__form--done .kdna-ab-subscribe__description {
+	display: none;
+}
+
+.kdna-ab-subscribe__message {
+	margin-top: var(--kdna-subscribe-gap);
+}
+
+.kdna-ab-subscribe__message--success {
+	color: var(--kdna-subscribe-success-colour);
+}
+
+.kdna-ab-subscribe__message--error {
+	color: var(--kdna-subscribe-error-colour);
+}
+
+/* Invisible honeypot. Off screen rather than display none, so bots still fill it. */
+
+.kdna-ab-subscribe__hp {
+	position: absolute !important;
+	left: -9999px !important;
+	top: auto;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+/*
+ * Inline layout. The layout control adds kdna-ab-layout-inline and, per
+ * breakpoint, kdna-ab-layout-tablet-inline and kdna-ab-layout-mobile-inline to
+ * the widget wrapper.
+ */
+
+.kdna-ab-layout-inline .kdna-ab-subscribe__fields {
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: flex-end;
+}
+
+.kdna-ab-layout-stacked .kdna-ab-subscribe__fields {
+	flex-direction: column;
+}
+
+@media screen and ( max-width: 1024px ) {
+	.kdna-ab-layout-tablet-inline .kdna-ab-subscribe__fields {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+
+	.kdna-ab-layout-tablet-stacked .kdna-ab-subscribe__fields {
+		flex-direction: column;
+	}
+}
+
+@media screen and ( max-width: 767px ) {
+	.kdna-ab-layout-mobile-inline .kdna-ab-subscribe__fields {
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-end;
+	}
+
+	.kdna-ab-layout-mobile-stacked .kdna-ab-subscribe__fields {
+		flex-direction: column;
+	}
+}

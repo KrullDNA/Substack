@@ -127,6 +127,43 @@ class KDNA_AB_API {
 	}
 
 	/**
+	 * Looks up a subscriber on a list by email address.
+	 *
+	 * Returns the subscriber record, including State, or a WP_Error. A 404 means
+	 * the address is not on the list.
+	 *
+	 * @param string $list_id List ID.
+	 * @param string $email    Email address.
+	 * @return array|WP_Error
+	 */
+	public function get_subscriber( $list_id, $email ) {
+		return $this->request(
+			'GET',
+			'subscribers/' . rawurlencode( $list_id ) . '.json?email=' . rawurlencode( $email )
+		);
+	}
+
+	/**
+	 * Adds or updates a subscriber on a list.
+	 *
+	 * When the list is set to double opt-in, the subscriber is added in an
+	 * unconfirmed state and Campaign Monitor sends its confirmation email.
+	 *
+	 * @param string $list_id List ID.
+	 * @param array  $data    Subscriber payload.
+	 * @return string|WP_Error Email address on success.
+	 */
+	public function add_subscriber( $list_id, $data ) {
+		$result = $this->request( 'POST', 'subscribers/' . rawurlencode( $list_id ) . '.json', $data );
+
+		if ( is_wp_error( $result ) ) {
+			return $result;
+		}
+
+		return is_string( $result ) ? $result : (string) $result;
+	}
+
+	/**
 	 * Fetches a list's statistics, including the active subscriber count.
 	 *
 	 * @param string $list_id Campaign Monitor list ID.
