@@ -152,6 +152,13 @@
 			testingRecaptcha: false,
 			recaptchaResult: null,
 
+			// Stage 13 state.
+			tools: JSON.parse( JSON.stringify( kdnaAb.tools || {} ) ),
+			toolsResult: null,
+			importing: false,
+			importResult: null,
+			debugPostId: null,
+
 			/**
 			 * True while a Stage 1 request is in flight.
 			 *
@@ -907,6 +914,98 @@
 					.finally( function () {
 						self.testingRecaptcha = false;
 					} );
+			},
+
+			/*
+			 * -----------------------------------------------------------------
+			 * Stage 13, tools
+			 * -----------------------------------------------------------------
+			 */
+
+			/**
+			 * Saves the maintenance tools, the delete on uninstall flag.
+			 *
+			 * @return {void}
+			 */
+			saveTools: function () {
+				this.toolsResult = { type: 'info', message: kdnaAb.i18n.saving };
+
+				request( 'kdna_ab_save_tools', { payload: JSON.stringify( this.tools ) } )
+					.then( function ( payload ) {
+						if ( payload && payload.success && payload.data ) {
+							this.toolsResult = { type: 'success', message: payload.data.message };
+						} else {
+							this.toolsResult = { type: 'error', message: this.messageFrom( payload ) };
+						}
+					}.bind( this ) )
+					.catch( function () {
+						this.toolsResult = { type: 'error', message: kdnaAb.i18n.networkError };
+					}.bind( this ) );
+			},
+
+			/**
+			 * Reads the chosen export file and imports it.
+			 *
+			 * @return {void}
+			 */
+			importSettings: function () {
+				if ( this.importing ) {
+					return;
+				}
+
+				var input = this.$refs.importFile;
+
+				if ( ! input || ! input.files || ! input.files.length ) {
+					this.importResult = { type: 'error', message: kdnaAb.i18n.importRead };
+					return;
+				}
+
+				this.importing = true;
+				this.importResult = { type: 'info', message: kdnaAb.i18n.importing };
+
+				var self = this;
+				var reader = new FileReader();
+
+				reader.onload = function ( event ) {
+					request( 'kdna_ab_import', { payload: event.target.result } )
+						.then( function ( payload ) {
+							if ( payload && payload.success && payload.data ) {
+								self.importResult = { type: 'success', message: kdnaAb.i18n.importDone };
+								window.setTimeout( function () {
+									window.location.reload();
+								}, 1200 );
+							} else {
+								self.importResult = { type: 'error', message: self.messageFrom( payload ) };
+							}
+						} )
+						.catch( function () {
+							self.importResult = { type: 'error', message: kdnaAb.i18n.networkError };
+						} )
+						.finally( function () {
+							self.importing = false;
+						} );
+				};
+
+				reader.onerror = function () {
+					self.importing = false;
+					self.importResult = { type: 'error', message: kdnaAb.i18n.importInvalid };
+				};
+
+				reader.readAsText( input.files[0] );
+			},
+
+			/**
+			 * Builds the debug URL for the entered post ID.
+			 *
+			 * @return {string}
+			 */
+			debugHref: function () {
+				if ( ! this.debugPostId || ! this.tools.debugBase ) {
+					return '#';
+				}
+
+				var join = this.tools.debugBase.indexOf( '?' ) === -1 ? '?' : '&';
+				return this.tools.debugBase + join + 'kdna_ab_debug=' + encodeURIComponent( this.debugPostId );
 			},
 
 			/*

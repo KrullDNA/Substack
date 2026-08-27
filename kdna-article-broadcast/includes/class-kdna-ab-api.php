@@ -319,6 +319,8 @@ class KDNA_AB_API {
 
 		// Transport level failure, for example DNS, connection refused or timeout.
 		if ( is_wp_error( $response ) ) {
+			self::record_last_response( 0, $response->get_error_message() );
+
 			return new WP_Error(
 				'kdna_ab_http',
 				sprintf(
@@ -337,12 +339,33 @@ class KDNA_AB_API {
 		$raw  = wp_remote_retrieve_body( $response );
 		$data = json_decode( $raw, true );
 
+		self::record_last_response( $code );
+
 		// Success.
 		if ( $code >= 200 && $code < 300 ) {
 			return ( null === $data ) ? array() : $data;
 		}
 
 		return $this->build_error( $code, $data, $raw );
+	}
+
+	/**
+	 * Records the most recent API response code, for the diagnostics panel.
+	 *
+	 * @param int    $code    HTTP status code, 0 for a transport failure.
+	 * @param string $message Optional message.
+	 * @return void
+	 */
+	private static function record_last_response( $code, $message = '' ) {
+		update_option(
+			'kdna_ab_last_api',
+			array(
+				'code'    => (int) $code,
+				'message' => sanitize_text_field( $message ),
+				'time'    => time(),
+			),
+			false
+		);
 	}
 
 	/**

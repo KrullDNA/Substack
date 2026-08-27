@@ -227,6 +227,23 @@ This build is delivered in stages. Each stage is individually testable.
   list divider, gap controls and empty state styling. All driven by CSS custom
   properties, no selector targets elementor-widget-container.
 
+**Stage 13, polish, documentation and release (this release)**
+
+* A gated uninstall routine. With the Delete all data on uninstall setting off,
+  the default, uninstalling leaves everything intact. With it on, uninstalling
+  removes every option, all plugin post meta, cached transients, the notice
+  dismissal, scheduled events and the send log table.
+* Settings import and export as JSON, so the configuration, including the API
+  key and reCAPTCHA secret, can be moved between staging and live. Import
+  re-encrypts the secrets for the target site.
+* A diagnostics panel showing the plugin, PHP, WordPress and Elementor
+  versions, JetEngine and KDNA Reading Time status, the last API response code,
+  the cron status and the next digest time.
+* A debug mode via the kdna_ab_debug URL parameter with a post ID, for an
+  administrator, that shows and logs the assembled values and the Campaign
+  Monitor payload without sending anything.
+* A full pass for escaping, sanitisation and translation readiness.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -285,3 +302,11 @@ authentication salts, and it is never sent back to the browser.
 * Stage 12: the newsletter archive widget, API or local log source with
   transient caching, list and grid layouts, load more or numbered pagination,
   the empty state, and complete responsive style controls with hover states.
+* Stage 13: gated uninstall, settings import and export, the diagnostics panel,
+  debug mode, and the escaping, sanitisation and translation readiness pass.
+
+== Upgrade Notice ==
+
+= 1.0.0 =
+First release. Build one Campaign Monitor client, list and templates, map the
+JetEngine fields, then broadcast from the post editor.

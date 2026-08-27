@@ -114,6 +114,12 @@ class KDNA_AB_Settings {
 		// Stage 10.
 		add_action( 'wp_ajax_kdna_ab_save_signup', array( $this, 'ajax_save_signup' ) );
 		add_action( 'wp_ajax_kdna_ab_test_recaptcha', array( $this, 'ajax_test_recaptcha' ) );
+
+		// Stage 13.
+		add_action( 'wp_ajax_kdna_ab_import', array( $this, 'ajax_import' ) );
+		add_action( 'wp_ajax_kdna_ab_save_tools', array( $this, 'ajax_save_tools' ) );
+		add_action( 'admin_post_kdna_ab_export', array( $this, 'handle_export' ) );
+		add_action( 'admin_init', array( $this, 'maybe_debug' ) );
 	}
 
 	/*
@@ -385,6 +391,11 @@ class KDNA_AB_Settings {
 			'sending'     => $this->sending_for_display( $settings ),
 			'digest'      => $this->digest_for_display( $settings ),
 			'signup'      => $this->signup_for_display( $settings ),
+			'tools'       => array(
+				'deleteOnUninstall' => ! empty( $settings['delete_on_uninstall'] ),
+				'exportUrl'         => wp_nonce_url( admin_url( 'admin-post.php?action=kdna_ab_export' ), 'kdna_ab_export' ),
+				'debugBase'         => admin_url( 'options-general.php?page=' . self::MENU_SLUG ),
+			),
 			'i18n'        => array(
 				'testing'       => __( 'Testing connection...', 'kdna-article-broadcast' ),
 				'saving'        => __( 'Saving...', 'kdna-article-broadcast' ),
@@ -411,6 +422,11 @@ class KDNA_AB_Settings {
 				'testingRecaptcha' => __( 'Running reCAPTCHA...', 'kdna-article-broadcast' ),
 				'recaptchaRunError' => __( 'reCAPTCHA could not run in the browser. Check the site key.', 'kdna-article-broadcast' ),
 				'enterSiteKey'  => __( 'Enter a site key first.', 'kdna-article-broadcast' ),
+				'importing'     => __( 'Importing...', 'kdna-article-broadcast' ),
+				'importDone'    => __( 'Settings imported. Reloading...', 'kdna-article-broadcast' ),
+				'importRead'    => __( 'Choose an export file first.', 'kdna-article-broadcast' ),
+				'importInvalid' => __( 'That file is not a valid export.', 'kdna-article-broadcast' ),
+				'toolsSaved'    => __( 'Saved.', 'kdna-article-broadcast' ),
 			),
 		);
 	}
@@ -1405,6 +1421,293 @@ class KDNA_AB_Settings {
 				),
 			),
 			200
+		);
+	}
+
+	/*
+	 * -----------------------------------------------------------------------
+	 * Stage 13, tools, import, export, diagnostics and debug
+	 * -----------------------------------------------------------------------
+	 */
+
+	/**
+	 * Builds the exportable settings, with secrets decrypted so they work on the
+	 * target site.
+	 *
+	 * @return array
+	 */
+	private function export_settings() {
+		$settings = $this->get_settings();
+
+		$settings['api_key']              = KDNA_AB_Crypto::decrypt( $settings['api_key'] );
+		$settings['recaptcha_secret_key'] = KDNA_AB_Crypto::decrypt( $settings['recaptcha_secret_key'] );
+
+		// The connection record is runtime status, not configuration.
+		unset( $settings['connection'] );
+
+		return array(
+			'plugin'   => 'kdna-article-broadcast',
+			'version'  => KDNA_AB_VERSION,
+			'settings' => $settings,
+		);
+	}
+
+	/**
+	 * Streams the settings export as a JSON download.
+	 *
+	 * @return void
+	 */
+	public function handle_export() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			wp_die( esc_html__( 'You do not have permission to export settings.', 'kdna-article-broadcast' ) );
+		}
+
+		check_admin_referer( 'kdna_ab_export' );
+
+		$json = wp_json_encode( $this->export_settings(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="kdna-article-broadcast-settings.json"' );
+
+		echo $json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	/**
+	 * AJAX: imports settings from an export file.
+	 *
+	 * @return void
+	 */
+	public function ajax_import() {
+		$this->verify_request();
+
+		$raw  = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$data = json_decode( $raw, true );
+
+		if ( ! is_array( $data ) || empty( $data['settings'] ) || ! is_array( $data['settings'] )
+			|| ( isset( $data['plugin'] ) && 'kdna-article-broadcast' !== $data['plugin'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'That file is not a valid KDNA Article Broadcast export.', 'kdna-article-broadcast' ) ), 200 );
+		}
+
+		update_option( KDNA_AB_OPTION, $this->sanitise_import( $data['settings'] ) );
+
+		KDNA_AB_Digest::reschedule();
+		$this->clear_cache();
+
+		wp_send_json_success( array( 'message' => __( 'Settings imported.', 'kdna-article-broadcast' ) ) );
+	}
+
+	/**
+	 * Sanitises an imported settings array against the known schema.
+	 *
+	 * @param array $in Imported settings.
+	 * @return array
+	 */
+	private function sanitise_import( $in ) {
+		$defaults = kdna_ab_default_settings();
+		$out      = $defaults;
+
+		$text = static function ( $value ) {
+			return sanitize_text_field( (string) $value );
+		};
+
+		// Plain text keys.
+		$text_keys = array(
+			'client_id', 'client_name', 'list_id', 'list_name',
+			'template_single_id', 'template_single_name', 'template_digest_id', 'template_digest_name',
+			'from_name', 'intro_field', 'repeater_field', 'repeater_body', 'repeater_heading', 'repeater_image',
+			'date_format', 'cta_label', 'utm_source', 'utm_medium', 'utm_campaign', 'read_time_meta_key',
+			'send_mode', 'digest_time', 'digest_subject', 'recaptcha_site_key', 'cf_date_key', 'cf_ip_key', 'cf_page_key',
+		);
+
+		foreach ( $text_keys as $key ) {
+			if ( isset( $in[ $key ] ) ) {
+				$out[ $key ] = $text( $in[ $key ] );
+			}
+		}
+
+		// Emails.
+		foreach ( array( 'from_email', 'reply_to', 'notify_email' ) as $key ) {
+			$out[ $key ] = isset( $in[ $key ] ) ? sanitize_email( (string) $in[ $key ] ) : '';
+		}
+
+		// Textareas.
+		$out['digest_intro'] = isset( $in['digest_intro'] ) ? sanitize_textarea_field( (string) $in['digest_intro'] ) : '';
+
+		// Integers.
+		$out['teaser_word_count']    = isset( $in['teaser_word_count'] ) ? max( 1, absint( $in['teaser_word_count'] ) ) : $defaults['teaser_word_count'];
+		$out['email_image_w']        = isset( $in['email_image_w'] ) ? max( 1, absint( $in['email_image_w'] ) ) : $defaults['email_image_w'];
+		$out['email_image_h']        = isset( $in['email_image_h'] ) ? max( 1, absint( $in['email_image_h'] ) ) : $defaults['email_image_h'];
+		$out['hold_window']          = isset( $in['hold_window'] ) ? max( 1, absint( $in['hold_window'] ) ) : $defaults['hold_window'];
+		$out['log_retention_months'] = isset( $in['log_retention_months'] ) ? absint( $in['log_retention_months'] ) : 0;
+		$out['digest_day']           = isset( $in['digest_day'] ) ? min( 6, max( 0, (int) $in['digest_day'] ) ) : $defaults['digest_day'];
+		$out['digest_max']           = isset( $in['digest_max'] ) ? max( 1, absint( $in['digest_max'] ) ) : $defaults['digest_max'];
+		$out['digest_window']        = isset( $in['digest_window'] ) ? max( 1, absint( $in['digest_window'] ) ) : $defaults['digest_window'];
+
+		// Floats.
+		$out['recaptcha_threshold'] = isset( $in['recaptcha_threshold'] ) ? min( 1.0, max( 0.0, (float) $in['recaptcha_threshold'] ) ) : $defaults['recaptcha_threshold'];
+
+		// Booleans.
+		foreach ( array( 'teaser_trim_sentence', 'preview_use_heading', 'digest_overlap', 'delete_on_uninstall' ) as $key ) {
+			$out[ $key ] = ! empty( $in[ $key ] );
+		}
+
+		// Normalised.
+		$out['send_mode']       = KDNA_AB_Sender::normalise_mode( isset( $in['send_mode'] ) ? $in['send_mode'] : 'draft' );
+		$out['digest_time']     = ( isset( $in['digest_time'] ) && preg_match( '/^\d{1,2}:\d{2}$/', (string) $in['digest_time'] ) ) ? (string) $in['digest_time'] : $defaults['digest_time'];
+		$out['placeholder_image'] = $this->sanitise_media_value( isset( $in['placeholder_image'] ) ? $in['placeholder_image'] : '' );
+
+		// Secrets, re-encrypted for this site.
+		$out['api_key']              = ! empty( $in['api_key'] ) ? KDNA_AB_Crypto::encrypt( $text( $in['api_key'] ) ) : '';
+		$out['recaptcha_secret_key'] = ! empty( $in['recaptcha_secret_key'] ) ? KDNA_AB_Crypto::encrypt( $text( $in['recaptcha_secret_key'] ) ) : '';
+
+		// Mappings.
+		$out['mapping_single'] = $this->sanitise_mapping( isset( $in['mapping_single'] ) ? $in['mapping_single'] : array(), self::single_fields() );
+		$out['mapping_digest'] = array(
+			'top'      => $this->sanitise_mapping( isset( $in['mapping_digest']['top'] ) ? $in['mapping_digest']['top'] : array(), self::digest_top_fields() ),
+			'repeater' => $this->sanitise_mapping( isset( $in['mapping_digest']['repeater'] ) ? $in['mapping_digest']['repeater'] : array(), self::digest_repeater_fields() ),
+		);
+
+		// Test addresses.
+		$test = array();
+		if ( isset( $in['test_addresses'] ) && is_array( $in['test_addresses'] ) ) {
+			foreach ( $in['test_addresses'] as $address ) {
+				$email = sanitize_email( (string) $address );
+				if ( '' !== $email && is_email( $email ) && ! in_array( $email, $test, true ) ) {
+					$test[] = $email;
+				}
+			}
+		}
+		$out['test_addresses'] = array_slice( $test, 0, 4 );
+
+		// Runtime status is reset on import.
+		$out['connection'] = array();
+
+		return $out;
+	}
+
+	/**
+	 * AJAX: saves the maintenance tools, currently the delete on uninstall flag.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_tools() {
+		$this->verify_request();
+
+		$raw = isset( $_POST['payload'] ) ? wp_unslash( $_POST['payload'] ) : '';
+		$in  = json_decode( $raw, true );
+
+		if ( ! is_array( $in ) ) {
+			wp_send_json_error( array( 'message' => __( 'The setting could not be read.', 'kdna-article-broadcast' ) ), 400 );
+		}
+
+		$settings                        = $this->get_settings();
+		$settings['delete_on_uninstall'] = ! empty( $in['deleteOnUninstall'] );
+
+		update_option( KDNA_AB_OPTION, $settings );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'Saved.', 'kdna-article-broadcast' ),
+				'tools'   => array( 'deleteOnUninstall' => (bool) $settings['delete_on_uninstall'] ),
+			)
+		);
+	}
+
+	/**
+	 * Debug mode: assembles and logs the payload for a post without sending.
+	 *
+	 * Triggered by the kdna_ab_debug URL parameter with a post ID, for an
+	 * administrator only. Nothing is sent to Campaign Monitor.
+	 *
+	 * @return void
+	 */
+	public function maybe_debug() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( empty( $_GET['kdna_ab_debug'] ) || ! current_user_can( self::CAPABILITY ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$post_id = absint( $_GET['kdna_ab_debug'] );
+
+		if ( ! $post_id ) {
+			wp_die( esc_html__( 'Add a post ID, for example ?kdna_ab_debug=123', 'kdna-article-broadcast' ) );
+		}
+
+		$assembled = KDNA_AB_Content::assemble( $post_id );
+		$output    = array( 'post_id' => $post_id );
+
+		if ( is_wp_error( $assembled ) ) {
+			$output['error'] = $assembled->get_error_message();
+		} else {
+			$output['assembled'] = $assembled;
+			$output['payload']   = KDNA_AB_Sender::build_payload( $post_id, $assembled, $this->get_settings() );
+		}
+
+		$json = wp_json_encode( $output, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'KDNA Article Broadcast debug, post ' . $post_id . ': ' . $json );
+		}
+
+		wp_die(
+			'<pre style="white-space:pre-wrap;word-break:break-word;">' . esc_html( $json ) . '</pre>',
+			esc_html__( 'KDNA Article Broadcast debug', 'kdna-article-broadcast' ),
+			array( 'response' => 200 )
+		);
+	}
+
+	/**
+	 * Builds the diagnostics list for the settings page.
+	 *
+	 * @return array Label to value pairs, already prepared for display.
+	 */
+	public function get_diagnostics() {
+		$format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
+
+		$last_api  = get_option( 'kdna_ab_last_api', array() );
+		$last_text = '';
+		if ( is_array( $last_api ) && isset( $last_api['code'] ) ) {
+			$when      = ! empty( $last_api['time'] ) ? wp_date( $format, (int) $last_api['time'] ) : '';
+			$last_text = ( 0 === (int) $last_api['code'] )
+				? __( 'Could not reach the API', 'kdna-article-broadcast' )
+				: (string) (int) $last_api['code'];
+			if ( '' !== $when ) {
+				$last_text .= ' (' . $when . ')';
+			}
+		} else {
+			$last_text = __( 'No API calls yet', 'kdna-article-broadcast' );
+		}
+
+		if ( defined( 'ELEMENTOR_VERSION' ) ) {
+			$elementor = ELEMENTOR_VERSION;
+		} else {
+			$elementor = __( 'not active', 'kdna-article-broadcast' );
+		}
+
+		$next_digest    = KDNA_AB_Digest::next_run_timestamp();
+		$scheduled_next = wp_next_scheduled( 'kdna_ab_run_digest' );
+
+		$cron = ( defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON )
+			? __( 'WP-Cron disabled, using an external cron', 'kdna-article-broadcast' )
+			: __( 'WP-Cron enabled', 'kdna-article-broadcast' );
+
+		$yes = __( 'active', 'kdna-article-broadcast' );
+		$no  = __( 'not active', 'kdna-article-broadcast' );
+
+		return array(
+			__( 'Plugin version', 'kdna-article-broadcast' )     => KDNA_AB_VERSION,
+			__( 'PHP version', 'kdna-article-broadcast' )        => phpversion(),
+			__( 'WordPress version', 'kdna-article-broadcast' )  => get_bloginfo( 'version' ),
+			__( 'Elementor', 'kdna-article-broadcast' )          => $elementor,
+			__( 'JetEngine', 'kdna-article-broadcast' )          => ( class_exists( 'Jet_Engine' ) || function_exists( 'jet_engine' ) ) ? $yes : $no,
+			__( 'KDNA Reading Time', 'kdna-article-broadcast' )  => function_exists( 'kdna_reading_time' ) ? $yes : __( 'function not detected', 'kdna-article-broadcast' ),
+			__( 'Last API response', 'kdna-article-broadcast' )  => $last_text,
+			__( 'Cron', 'kdna-article-broadcast' )               => $cron,
+			__( 'Next digest', 'kdna-article-broadcast' )        => $scheduled_next ? wp_date( $format, $scheduled_next ) : ( $next_digest ? wp_date( $format, $next_digest ) : '-' ),
 		);
 	}
 

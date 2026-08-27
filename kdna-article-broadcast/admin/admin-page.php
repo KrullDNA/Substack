@@ -752,6 +752,65 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</form>
 	</div>
 
+	<?php /* ------------------------------------------------------------------ */ ?>
+	<?php /* Stage 13, tools, diagnostics and maintenance.                     */ ?>
+	<?php /* ------------------------------------------------------------------ */ ?>
+
+	<div class="kdna-ab-card">
+		<h2 class="kdna-ab-card__heading"><?php esc_html_e( 'Tools and diagnostics', 'kdna-article-broadcast' ); ?></h2>
+
+		<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Diagnostics', 'kdna-article-broadcast' ); ?></h3>
+		<table class="kdna-ab-preview__table widefat striped">
+			<tbody>
+				<?php foreach ( $this->get_diagnostics() as $label => $value ) : ?>
+					<tr>
+						<th scope="row"><?php echo esc_html( $label ); ?></th>
+						<td><?php echo esc_html( $value ); ?></td>
+					</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+
+		<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Import and export', 'kdna-article-broadcast' ); ?></h3>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'Move the configuration between staging and live. The export file contains your API key and reCAPTCHA secret in plain text, so keep it safe.', 'kdna-article-broadcast' ); ?>
+		</p>
+		<div class="kdna-ab-actions">
+			<a class="button button-secondary" :href="tools.exportUrl"><?php esc_html_e( 'Export settings', 'kdna-article-broadcast' ); ?></a>
+			<input type="file" accept="application/json,.json" x-ref="importFile" class="kdna-ab-import-file" />
+			<button type="button" class="button button-secondary" @click="importSettings()" :disabled="importing">
+				<span x-show="! importing"><?php esc_html_e( 'Import settings', 'kdna-article-broadcast' ); ?></span>
+				<span x-show="importing" x-cloak><?php esc_html_e( 'Importing...', 'kdna-article-broadcast' ); ?></span>
+			</button>
+		</div>
+		<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (importResult ? importResult.type : 'info')" x-show="importResult" x-cloak role="status" aria-live="polite">
+			<span x-text="importResult ? importResult.message : ''"></span>
+		</div>
+
+		<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Debug a post', 'kdna-article-broadcast' ); ?></h3>
+		<p class="kdna-ab-card__intro">
+			<?php esc_html_e( 'Opens the assembled values and the Campaign Monitor payload for a post, without sending anything. It is also logged when WP_DEBUG is on.', 'kdna-article-broadcast' ); ?>
+		</p>
+		<div class="kdna-ab-actions">
+			<input type="number" min="1" step="1" class="small-text" x-model.number="debugPostId" placeholder="<?php esc_attr_e( 'Post ID', 'kdna-article-broadcast' ); ?>" aria-label="<?php esc_attr_e( 'Post ID to debug', 'kdna-article-broadcast' ); ?>" />
+			<a class="button button-secondary" :href="debugHref()" :aria-disabled="( ! debugPostId ).toString()" target="_blank" rel="noopener"><?php esc_html_e( 'Open debug output', 'kdna-article-broadcast' ); ?></a>
+		</div>
+
+		<h3 class="kdna-ab-subheading"><?php esc_html_e( 'Uninstall', 'kdna-article-broadcast' ); ?></h3>
+		<div class="kdna-ab-field kdna-ab-field--check">
+			<label>
+				<input type="checkbox" x-model="tools.deleteOnUninstall" @change="saveTools()" />
+				<?php esc_html_e( 'Delete all plugin data when the plugin is uninstalled', 'kdna-article-broadcast' ); ?>
+			</label>
+		</div>
+		<p class="kdna-ab-field__hint">
+			<?php esc_html_e( 'Off by default. When off, uninstalling leaves your settings, post data and the send log intact. When on, uninstalling removes every option, post meta value and the send log table.', 'kdna-article-broadcast' ); ?>
+		</p>
+		<div class="kdna-ab-notice" :class="'kdna-ab-notice--' + (toolsResult ? toolsResult.type : 'info')" x-show="toolsResult" x-cloak role="status" aria-live="polite">
+			<span x-text="toolsResult ? toolsResult.message : ''"></span>
+		</div>
+	</div>
+
 	<p class="kdna-ab-footnote">
 		<?php
 		printf(
