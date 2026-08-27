@@ -191,6 +191,24 @@ This build is delivered in stages. Each stage is individually testable.
 * Assets load only where the widget is present. Markup exposes kdna- prefixed
   classes and CSS custom property hooks, ready for the Stage 11 style controls.
 
+**Stage 11, signup widget style controls (this release)**
+
+* Complete Elementor style controls for every element and state: wrapper
+  background and gradient, border, radius, shadow, padding, margin, maximum
+  width and alignment; heading and description typography, colour and margin;
+  labels with a show or hide toggle; fields with typography, text, placeholder,
+  background, border, radius, padding, minimum height and independent focus and
+  error states; horizontal and vertical field gaps; the button with typography,
+  padding, radius, border, icon with size, gap and position, normal, hover,
+  focus and disabled states and a transition duration; inline width mode and
+  vertical alignment; the loading spinner colour and submitting text; and the
+  success and error messages styled fully independently, each with an icon.
+* An editor only Preview state control renders the default, loading, success
+  and error states while designing, with zero effect on the live site.
+* Everything is driven by kdna- prefixed CSS custom properties, every
+  dimensional control is responsive across all three breakpoints, and no
+  selector targets elementor-widget-container.
+
 == Installation ==
 
 1. Upload the kdna-article-broadcast folder to /wp-content/plugins/.
@@ -243,3 +261,6 @@ authentication salts, and it is never sent back to the browser.
 * Stage 10: the Elementor signup widget functionality, double opt-in, reCAPTCHA
   v3 with a real connection test and honeypot, consent metadata custom fields,
   the layout and success behaviour switchers, and AJAX submission.
+* Stage 11: the full Elementor style controls for the signup widget, every
+  element and state, an editor only preview state control, all driven by CSS
+  custom properties with every dimensional control responsive.

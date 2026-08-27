@@ -1,11 +1,11 @@
 /**
- * KDNA Article Broadcast, front end styling.
+ * KDNA Article Broadcast, front end styling for the subscribe widget.
  *
- * Stage 10 provides the structural layout for the subscribe widget, the
- * stacked and inline switch, the honeypot hide and the message and loading
- * states. Every value is driven by a kdna- prefixed CSS custom property with a
- * sensible default, so the Stage 11 Elementor controls can set the properties
- * without any hard-coded values being in the way.
+ * Every visible property is driven by a kdna- prefixed CSS custom property. The
+ * base values live in the default block on .kdna-ab-subscribe; the Stage 11
+ * Elementor style controls override them per instance by setting the same
+ * properties on the widget wrapper, which cascades down. State properties, such
+ * as focus, hover and error, fall back to their base property when unset.
  *
  * No selector targets elementor-widget-container.
  *
@@ -13,51 +13,90 @@
  */
 
 .kdna-ab-subscribe {
-	--kdna-subscribe-gap: 12px;
-	--kdna-subscribe-field-gap: 4px;
+	/* Layout. */
 	--kdna-subscribe-max-width: none;
-	--kdna-subscribe-heading-size: 1.25rem;
+	--kdna-subscribe-gap-x: 12px;
+	--kdna-subscribe-gap-y: 12px;
+	--kdna-subscribe-label-gap: 4px;
+
+	/* Heading, description, labels. */
 	--kdna-subscribe-heading-colour: inherit;
 	--kdna-subscribe-description-colour: inherit;
 	--kdna-subscribe-label-colour: inherit;
+
+	/* Inputs. */
 	--kdna-subscribe-input-bg: #ffffff;
 	--kdna-subscribe-input-colour: #1a1a1a;
+	--kdna-subscribe-input-placeholder-colour: #999999;
 	--kdna-subscribe-input-border-colour: #cccccc;
 	--kdna-subscribe-input-border-width: 1px;
+	--kdna-subscribe-input-border-style: solid;
 	--kdna-subscribe-input-radius: 4px;
 	--kdna-subscribe-input-padding: 10px 12px;
 	--kdna-subscribe-input-min-height: 44px;
-	--kdna-subscribe-button-bg: #1a1a1a;
+
+	/* Button. */
 	--kdna-subscribe-button-colour: #ffffff;
+	--kdna-subscribe-button-bg: #1a1a1a;
+	--kdna-subscribe-button-border-colour: transparent;
+	--kdna-subscribe-button-border-width: 0;
+	--kdna-subscribe-button-border-style: solid;
 	--kdna-subscribe-button-radius: 4px;
 	--kdna-subscribe-button-padding: 10px 18px;
+	--kdna-subscribe-button-icon-size: 1em;
+	--kdna-subscribe-button-icon-gap: 8px;
+	--kdna-subscribe-button-icon-order: 0;
+	--kdna-subscribe-button-transition: 0.2s;
+	--kdna-subscribe-button-fixed-width: 200px;
+	--kdna-subscribe-button-valign: stretch;
+
+	/* Loading. */
+	--kdna-subscribe-spinner-colour: currentColor;
+
+	/* Messages. */
 	--kdna-subscribe-success-colour: #1a6c2b;
+	--kdna-subscribe-success-bg: transparent;
+	--kdna-subscribe-success-border-colour: transparent;
+	--kdna-subscribe-success-border-width: 0;
+	--kdna-subscribe-success-border-style: solid;
+	--kdna-subscribe-success-radius: 0;
+	--kdna-subscribe-success-padding: 0;
+	--kdna-subscribe-success-icon-size: 1em;
 	--kdna-subscribe-error-colour: #9a1b1d;
+	--kdna-subscribe-error-bg: transparent;
+	--kdna-subscribe-error-border-colour: transparent;
+	--kdna-subscribe-error-border-width: 0;
+	--kdna-subscribe-error-border-style: solid;
+	--kdna-subscribe-error-radius: 0;
+	--kdna-subscribe-error-padding: 0;
+	--kdna-subscribe-error-icon-size: 1em;
 
 	max-width: var(--kdna-subscribe-max-width);
 }
 
+/* Heading and description. */
+
 .kdna-ab-subscribe__heading {
-	font-size: var(--kdna-subscribe-heading-size);
 	color: var(--kdna-subscribe-heading-colour);
-	margin-bottom: 6px;
 }
 
 .kdna-ab-subscribe__description {
 	color: var(--kdna-subscribe-description-colour);
-	margin-bottom: var(--kdna-subscribe-gap);
 }
+
+/* Fields. */
 
 .kdna-ab-subscribe__fields {
 	display: flex;
 	flex-direction: column;
-	gap: var(--kdna-subscribe-gap);
+	column-gap: var(--kdna-subscribe-gap-x);
+	row-gap: var(--kdna-subscribe-gap-y);
 }
 
 .kdna-ab-subscribe__field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--kdna-subscribe-field-gap);
+	gap: var(--kdna-subscribe-label-gap);
 	flex: 1 1 auto;
 	min-width: 0;
 }
@@ -71,42 +110,106 @@
 	box-sizing: border-box;
 	background: var(--kdna-subscribe-input-bg);
 	color: var(--kdna-subscribe-input-colour);
-	border: var(--kdna-subscribe-input-border-width) solid var(--kdna-subscribe-input-border-colour);
+	border-color: var(--kdna-subscribe-input-border-colour);
+	border-width: var(--kdna-subscribe-input-border-width);
+	border-style: var(--kdna-subscribe-input-border-style);
 	border-radius: var(--kdna-subscribe-input-radius);
 	padding: var(--kdna-subscribe-input-padding);
 	min-height: var(--kdna-subscribe-input-min-height);
+	transition: border-color var(--kdna-subscribe-button-transition), background var(--kdna-subscribe-button-transition);
 }
+
+.kdna-ab-subscribe__input::placeholder {
+	color: var(--kdna-subscribe-input-placeholder-colour);
+	opacity: 1;
+}
+
+.kdna-ab-subscribe__input:focus {
+	border-color: var(--kdna-subscribe-input-border-colour-focus, var(--kdna-subscribe-input-border-colour));
+	background: var(--kdna-subscribe-input-bg-focus, var(--kdna-subscribe-input-bg));
+	outline: none;
+}
+
+.kdna-ab-subscribe__field--invalid .kdna-ab-subscribe__input,
+.kdna-ab-subscribe__input[aria-invalid="true"] {
+	border-color: var(--kdna-subscribe-input-border-colour-error, var(--kdna-subscribe-input-border-colour));
+	background: var(--kdna-subscribe-input-bg-error, var(--kdna-subscribe-input-bg));
+}
+
+/* Button. */
 
 .kdna-ab-subscribe__actions {
 	display: flex;
 	align-items: flex-end;
+	align-self: var(--kdna-subscribe-button-valign);
 }
 
 .kdna-ab-subscribe__button {
 	cursor: pointer;
-	background: var(--kdna-subscribe-button-bg);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--kdna-subscribe-button-icon-gap);
 	color: var(--kdna-subscribe-button-colour);
-	border: 0;
+	background: var(--kdna-subscribe-button-bg);
+	border-color: var(--kdna-subscribe-button-border-colour);
+	border-width: var(--kdna-subscribe-button-border-width);
+	border-style: var(--kdna-subscribe-button-border-style);
 	border-radius: var(--kdna-subscribe-button-radius);
 	padding: var(--kdna-subscribe-button-padding);
 	min-height: var(--kdna-subscribe-input-min-height);
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
+	transition: color var(--kdna-subscribe-button-transition), background var(--kdna-subscribe-button-transition), border-color var(--kdna-subscribe-button-transition), box-shadow var(--kdna-subscribe-button-transition);
+}
+
+.kdna-ab-subscribe__button:hover {
+	color: var(--kdna-subscribe-button-colour-hover, var(--kdna-subscribe-button-colour));
+	background: var(--kdna-subscribe-button-bg-hover, var(--kdna-subscribe-button-bg));
+	border-color: var(--kdna-subscribe-button-border-colour-hover, var(--kdna-subscribe-button-border-colour));
+}
+
+.kdna-ab-subscribe__button:focus {
+	color: var(--kdna-subscribe-button-colour-focus, var(--kdna-subscribe-button-colour));
+	background: var(--kdna-subscribe-button-bg-focus, var(--kdna-subscribe-button-bg));
+	border-color: var(--kdna-subscribe-button-border-colour-focus, var(--kdna-subscribe-button-border-colour));
 }
 
 .kdna-ab-subscribe__button[disabled] {
-	opacity: 0.7;
+	color: var(--kdna-subscribe-button-colour-disabled, var(--kdna-subscribe-button-colour));
+	background: var(--kdna-subscribe-button-bg-disabled, var(--kdna-subscribe-button-bg));
+	border-color: var(--kdna-subscribe-button-border-colour-disabled, var(--kdna-subscribe-button-border-colour));
 	cursor: default;
 }
 
-/* Loading spinner. */
+.kdna-ab-subscribe__button-icon {
+	order: var(--kdna-subscribe-button-icon-order);
+	display: inline-flex;
+	line-height: 0;
+}
+
+.kdna-ab-subscribe__button-icon svg,
+.kdna-ab-subscribe__button-icon i {
+	width: var(--kdna-subscribe-button-icon-size);
+	height: var(--kdna-subscribe-button-icon-size);
+	font-size: var(--kdna-subscribe-button-icon-size);
+}
+
+.kdna-ab-subscribe__button-text {
+	order: 1;
+}
+
+.kdna-ab-subscribe__button-loading {
+	order: 1;
+	display: none;
+}
+
+/* Loading spinner and loading text swap. */
 
 .kdna-ab-subscribe__spinner {
+	order: 0;
 	display: none;
 	width: 14px;
 	height: 14px;
-	border: 2px solid currentColor;
+	border: 2px solid var(--kdna-subscribe-spinner-colour);
 	border-right-color: transparent;
 	border-radius: 50%;
 	animation: kdna-ab-spin 0.7s linear infinite;
@@ -116,13 +219,25 @@
 	display: inline-block;
 }
 
+.kdna-ab-subscribe__form--loading .kdna-ab-subscribe__button-icon {
+	display: none;
+}
+
+.kdna-ab-subscribe__form--loading .kdna-ab-subscribe__button-text {
+	display: none;
+}
+
+.kdna-ab-subscribe__form--loading .kdna-ab-subscribe__button-loading {
+	display: inline;
+}
+
 @keyframes kdna-ab-spin {
 	to {
 		transform: rotate( 360deg );
 	}
 }
 
-/* Success fade out. */
+/* Success fade out on completion. */
 
 .kdna-ab-subscribe__form--done .kdna-ab-subscribe__fields,
 .kdna-ab-subscribe__form--done .kdna-ab-subscribe__heading,
@@ -130,16 +245,56 @@
 	display: none;
 }
 
+/* Messages. */
+
 .kdna-ab-subscribe__message {
-	margin-top: var(--kdna-subscribe-gap);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: var(--kdna-subscribe-gap-y);
+}
+
+.kdna-ab-subscribe__message[hidden] {
+	display: none;
 }
 
 .kdna-ab-subscribe__message--success {
 	color: var(--kdna-subscribe-success-colour);
+	background: var(--kdna-subscribe-success-bg);
+	border-color: var(--kdna-subscribe-success-border-colour);
+	border-width: var(--kdna-subscribe-success-border-width);
+	border-style: var(--kdna-subscribe-success-border-style);
+	border-radius: var(--kdna-subscribe-success-radius);
+	padding: var(--kdna-subscribe-success-padding);
+}
+
+.kdna-ab-subscribe__message--success .kdna-ab-subscribe__message-icon svg,
+.kdna-ab-subscribe__message--success .kdna-ab-subscribe__message-icon i {
+	width: var(--kdna-subscribe-success-icon-size);
+	height: var(--kdna-subscribe-success-icon-size);
+	font-size: var(--kdna-subscribe-success-icon-size);
 }
 
 .kdna-ab-subscribe__message--error {
 	color: var(--kdna-subscribe-error-colour);
+	background: var(--kdna-subscribe-error-bg);
+	border-color: var(--kdna-subscribe-error-border-colour);
+	border-width: var(--kdna-subscribe-error-border-width);
+	border-style: var(--kdna-subscribe-error-border-style);
+	border-radius: var(--kdna-subscribe-error-radius);
+	padding: var(--kdna-subscribe-error-padding);
+}
+
+.kdna-ab-subscribe__message--error .kdna-ab-subscribe__message-icon svg,
+.kdna-ab-subscribe__message--error .kdna-ab-subscribe__message-icon i {
+	width: var(--kdna-subscribe-error-icon-size);
+	height: var(--kdna-subscribe-error-icon-size);
+	font-size: var(--kdna-subscribe-error-icon-size);
+}
+
+.kdna-ab-subscribe__message-icon {
+	display: inline-flex;
+	line-height: 0;
 }
 
 /* Invisible honeypot. Off screen rather than display none, so bots still fill it. */
@@ -154,9 +309,9 @@
 }
 
 /*
- * Inline layout. The layout control adds kdna-ab-layout-inline and, per
- * breakpoint, kdna-ab-layout-tablet-inline and kdna-ab-layout-mobile-inline to
- * the widget wrapper.
+ * Layout switcher. The responsive layout control adds kdna-ab-layout-inline and
+ * per breakpoint kdna-ab-layout-tablet-inline and kdna-ab-layout-mobile-inline
+ * to the widget wrapper.
  */
 
 .kdna-ab-layout-inline .kdna-ab-subscribe__fields {
@@ -191,4 +346,29 @@
 	.kdna-ab-layout-mobile-stacked .kdna-ab-subscribe__fields {
 		flex-direction: column;
 	}
+}
+
+/*
+ * Button width mode. The responsive control adds kdna-ab-btnwidth-fill or
+ * kdna-ab-btnwidth-fixed to the widget wrapper.
+ */
+
+.kdna-ab-btnwidth-fill .kdna-ab-subscribe__actions,
+.kdna-ab-btnwidth-fill .kdna-ab-subscribe__button {
+	width: 100%;
+}
+
+.kdna-ab-btnwidth-fixed .kdna-ab-subscribe__button {
+	width: var(--kdna-subscribe-button-fixed-width);
+}
+
+/*
+ * Editor only preview states. These classes are added by the widget render only
+ * inside the Elementor editor, so they have zero effect on the front end.
+ */
+
+.kdna-ab-subscribe__form--preview-success .kdna-ab-subscribe__fields,
+.kdna-ab-subscribe__form--preview-success .kdna-ab-subscribe__heading,
+.kdna-ab-subscribe__form--preview-success .kdna-ab-subscribe__description {
+	display: none;
 }

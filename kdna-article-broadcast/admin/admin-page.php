@@ -756,7 +756,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php
 		printf(
 			/* translators: %s: plugin version number. */
-			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 10 complete.', 'kdna-article-broadcast' ),
+			esc_html__( 'KDNA Article Broadcast version %s. Stages 1 to 11 complete.', 'kdna-article-broadcast' ),
 			esc_html( KDNA_AB_VERSION )
 		);
 		?>

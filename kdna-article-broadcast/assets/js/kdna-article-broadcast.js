@@ -146,7 +146,7 @@
 		form.classList.add( 'kdna-ab-subscribe__form--done' );
 
 		if ( success ) {
-			success.textContent = message;
+			setMessageText( success, message );
 			success.hidden = false;
 		}
 	}
@@ -162,8 +162,24 @@
 		var error = widget.querySelector( '.kdna-ab-subscribe__message--error' );
 
 		if ( error ) {
-			error.textContent = message;
+			setMessageText( error, message );
 			error.hidden = false;
+		}
+	}
+
+	/**
+	 * Sets the text of a message, into its text span so the icon is preserved.
+	 *
+	 * @param {HTMLElement} node The message container.
+	 * @param {string} message The text.
+	 * @return {void}
+	 */
+	function setMessageText( node, message ) {
+		var text = node.querySelector( '.kdna-ab-subscribe__message-text' );
+		if ( text ) {
+			text.textContent = message;
+		} else {
+			node.textContent = message;
 		}
 	}
 
@@ -177,7 +193,7 @@
 		var messages = widget.querySelectorAll( '.kdna-ab-subscribe__message' );
 		Array.prototype.forEach.call( messages, function ( node ) {
 			node.hidden = true;
-			node.textContent = '';
+			setMessageText( node, '' );
 		} );
 	}
 
