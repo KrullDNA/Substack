@@ -1,0 +1,155 @@
+/**
+ * KDNA Article Broadcast, meta box styling.
+ *
+ * Shared by the Classic side meta box and the block editor document panel.
+ * Scoped under kdna- prefixed classes so nothing leaks elsewhere.
+ *
+ * @package KDNA_Article_Broadcast
+ */
+
+.kdna-ab-metabox,
+.kdna-ab-panel {
+	--kdna-ab-mb-muted: #646970;
+	--kdna-ab-mb-border: #dcdcde;
+	--kdna-ab-mb-sent-bg: #edfaef;
+	--kdna-ab-mb-sent-ink: #1a6c2b;
+	--kdna-ab-mb-failed-bg: #fcf0f1;
+	--kdna-ab-mb-failed-ink: #9a1b1d;
+	--kdna-ab-mb-held-bg: #fcf9e8;
+	--kdna-ab-mb-held-ink: #7a5c00;
+	--kdna-ab-mb-info-bg: #f0f6fc;
+	--kdna-ab-mb-info-ink: #0a4b78;
+}
+
+/* Status readout, shared. */
+
+.kdna-ab-mb-status {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 8px 12px;
+	margin-bottom: 12px;
+	border-radius: 4px;
+	background: var(--kdna-ab-mb-info-bg);
+	color: var(--kdna-ab-mb-info-ink);
+}
+
+.kdna-ab-mb-status__label {
+	font-weight: 600;
+}
+
+.kdna-ab-mb-status__detail {
+	font-size: 12px;
+	opacity: 0.9;
+}
+
+.kdna-ab-mb-status--sent {
+	background: var(--kdna-ab-mb-sent-bg);
+	color: var(--kdna-ab-mb-sent-ink);
+}
+
+.kdna-ab-mb-status--failed {
+	background: var(--kdna-ab-mb-failed-bg);
+	color: var(--kdna-ab-mb-failed-ink);
+}
+
+.kdna-ab-mb-status--held,
+.kdna-ab-mb-status--queued,
+.kdna-ab-mb-status--draft {
+	background: var(--kdna-ab-mb-held-bg);
+	color: var(--kdna-ab-mb-held-ink);
+}
+
+/* Classic meta box rows. */
+
+.kdna-ab-mb-row {
+	margin: 0 0 12px;
+}
+
+.kdna-ab-mb-row--check {
+	font-weight: 600;
+}
+
+.kdna-ab-mb-label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 4px;
+}
+
+.kdna-ab-mb-hint {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: var(--kdna-ab-mb-muted);
+}
+
+.kdna-ab-mb-note {
+	font-size: 12px;
+	color: var(--kdna-ab-mb-muted);
+	margin: 0 0 12px;
+}
+
+.kdna-ab-mb-readonly {
+	margin: 0 0 12px;
+}
+
+.kdna-ab-mb-readonly dt {
+	font-weight: 600;
+	margin-top: 8px;
+}
+
+.kdna-ab-mb-readonly dd {
+	margin: 2px 0 0;
+	word-break: break-all;
+}
+
+.kdna-ab-mb-cid {
+	font-size: 12px;
+	word-break: break-all;
+}
+
+.kdna-ab-mb-unlock {
+	width: 100%;
+	justify-content: center;
+	text-align: center;
+}
+
+/* Test send. */
+
+.kdna-ab-mb-test {
+	margin: 12px 0;
+	padding-top: 12px;
+	border-top: 1px solid var(--kdna-ab-mb-border);
+}
+
+.kdna-ab-mb-help {
+	font-size: 12px;
+	color: var(--kdna-ab-mb-muted);
+	margin: 6px 0 0;
+}
+
+.kdna-ab-mb-test-feedback {
+	margin-top: 8px;
+	padding: 6px 10px;
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+.kdna-ab-mb-test-feedback:empty {
+	display: none;
+}
+
+.kdna-ab-mb-test-feedback--info {
+	background: var(--kdna-ab-mb-info-bg);
+	color: var(--kdna-ab-mb-info-ink);
+}
+
+.kdna-ab-mb-test-feedback--success {
+	background: var(--kdna-ab-mb-sent-bg);
+	color: var(--kdna-ab-mb-sent-ink);
+}
+
+.kdna-ab-mb-test-feedback--error {
+	background: var(--kdna-ab-mb-failed-bg);
+	color: var(--kdna-ab-mb-failed-ink);
+}

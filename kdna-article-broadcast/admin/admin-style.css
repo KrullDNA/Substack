@@ -1,0 +1,406 @@
+/**
+ * KDNA Article Broadcast, admin settings styling.
+ *
+ * Scoped under .kdna-ab-wrap so nothing leaks into the rest of wp-admin.
+ * Values are driven by kdna- prefixed CSS custom properties.
+ *
+ * @package KDNA_Article_Broadcast
+ */
+
+.kdna-ab-wrap {
+	--kdna-ab-accent: #2271b1;
+	--kdna-ab-accent-ink: #135e96;
+	--kdna-ab-border: #dcdcde;
+	--kdna-ab-surface: #ffffff;
+	--kdna-ab-muted: #646970;
+	--kdna-ab-radius: 8px;
+	--kdna-ab-gap: 16px;
+	--kdna-ab-success-bg: #edfaef;
+	--kdna-ab-success-border: #46b450;
+	--kdna-ab-success-ink: #1a6c2b;
+	--kdna-ab-error-bg: #fcf0f1;
+	--kdna-ab-error-border: #d63638;
+	--kdna-ab-error-ink: #9a1b1d;
+	--kdna-ab-info-bg: #f0f6fc;
+	--kdna-ab-info-border: #72aee6;
+	--kdna-ab-info-ink: #0a4b78;
+}
+
+/* Hide Alpine controlled elements until Alpine is ready. */
+.kdna-ab-wrap [x-cloak] {
+	display: none !important;
+}
+
+.kdna-ab-title {
+	margin-bottom: 4px;
+}
+
+.kdna-ab-subtitle {
+	margin-top: 0;
+	color: var(--kdna-ab-muted);
+	max-width: 640px;
+}
+
+.kdna-ab-card {
+	background: var(--kdna-ab-surface);
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: var(--kdna-ab-radius);
+	padding: 24px;
+	margin-top: var(--kdna-ab-gap);
+	max-width: 720px;
+	box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.04 );
+}
+
+.kdna-ab-card__heading {
+	margin-top: 0;
+	margin-bottom: 4px;
+}
+
+.kdna-ab-card__intro {
+	margin-top: 0;
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-field {
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-field__label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 6px;
+}
+
+.kdna-ab-input-group {
+	display: flex;
+	gap: 8px;
+	align-items: stretch;
+}
+
+.kdna-ab-input {
+	flex: 1 1 auto;
+	min-width: 0;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.kdna-ab-input-group__toggle {
+	flex: 0 0 auto;
+	min-width: 64px;
+}
+
+.kdna-ab-field__hint {
+	margin: 6px 0 0;
+	color: var(--kdna-ab-muted);
+	font-size: 12px;
+}
+
+.kdna-ab-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-notice {
+	border-left: 4px solid var(--kdna-ab-info-border);
+	background: var(--kdna-ab-info-bg);
+	color: var(--kdna-ab-info-ink);
+	padding: 10px 14px;
+	border-radius: 4px;
+}
+
+.kdna-ab-notice--success {
+	border-left-color: var(--kdna-ab-success-border);
+	background: var(--kdna-ab-success-bg);
+	color: var(--kdna-ab-success-ink);
+}
+
+.kdna-ab-notice--error {
+	border-left-color: var(--kdna-ab-error-border);
+	background: var(--kdna-ab-error-bg);
+	color: var(--kdna-ab-error-ink);
+}
+
+.kdna-ab-notice--info {
+	border-left-color: var(--kdna-ab-info-border);
+	background: var(--kdna-ab-info-bg);
+	color: var(--kdna-ab-info-ink);
+}
+
+.kdna-ab-connection {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+	margin-top: var(--kdna-ab-gap);
+	padding-top: var(--kdna-ab-gap);
+	border-top: 1px solid var(--kdna-ab-border);
+}
+
+.kdna-ab-connection__badge {
+	display: inline-block;
+	background: var(--kdna-ab-success-bg);
+	color: var(--kdna-ab-success-ink);
+	border: 1px solid var(--kdna-ab-success-border);
+	border-radius: 999px;
+	padding: 2px 12px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.kdna-ab-connection__meta {
+	color: var(--kdna-ab-muted);
+	font-size: 13px;
+}
+
+.kdna-ab-footnote {
+	margin-top: var(--kdna-ab-gap);
+	color: var(--kdna-ab-muted);
+	font-size: 12px;
+}
+
+/* Stage 2, selection and mapping. */
+
+.kdna-ab-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.kdna-ab-refresh {
+	flex: 0 0 auto;
+}
+
+.kdna-ab-grid {
+	display: grid;
+	grid-template-columns: repeat( 2, minmax( 0, 1fr ) );
+	gap: var(--kdna-ab-gap);
+}
+
+.kdna-ab-grid--three {
+	grid-template-columns: repeat( 3, minmax( 0, 1fr ) );
+}
+
+@media screen and ( max-width: 782px ) {
+	.kdna-ab-grid,
+	.kdna-ab-grid--three {
+		grid-template-columns: 1fr;
+	}
+}
+
+.kdna-ab-select {
+	width: 100%;
+	max-width: 100%;
+}
+
+.kdna-ab-subheading {
+	margin: 24px 0 4px;
+	padding-top: var(--kdna-ab-gap);
+	border-top: 1px solid var(--kdna-ab-border);
+}
+
+.kdna-ab-template-preview {
+	margin-top: 8px;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 4px;
+	overflow: hidden;
+	max-width: 320px;
+}
+
+.kdna-ab-template-preview img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.kdna-ab-mapping-title {
+	margin: 20px 0 6px;
+}
+
+table.kdna-ab-mapping {
+	margin-bottom: 6px;
+}
+
+.kdna-ab-col-narrow {
+	width: 96px;
+	text-align: center;
+}
+
+.kdna-ab-type {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--kdna-ab-accent-ink);
+	background: var(--kdna-ab-info-bg);
+	border: 1px solid var(--kdna-ab-info-border);
+	border-radius: 999px;
+	padding: 1px 10px;
+}
+
+.kdna-ab-order {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px 16px;
+	margin: 0 0 8px;
+	padding: 8px 12px;
+	background: var(--kdna-ab-info-bg);
+	border-radius: 4px;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-order__label {
+	font-weight: 600;
+	color: var(--kdna-ab-accent-ink);
+}
+
+.kdna-ab-order__group strong {
+	font-weight: 600;
+}
+
+/* Stage 4, content assembly and preview. */
+
+.kdna-ab-field--check {
+	display: flex;
+	align-items: center;
+}
+
+.kdna-ab-field--check label {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-ab-dimension {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.kdna-ab-dimension__x {
+	color: var(--kdna-ab-muted);
+}
+
+.kdna-ab-preview {
+	margin-top: var(--kdna-ab-gap);
+}
+
+.kdna-ab-preview__post {
+	margin: 0 0 8px;
+}
+
+.kdna-ab-preview__post span {
+	color: var(--kdna-ab-muted);
+	margin-left: 6px;
+}
+
+.kdna-ab-preview__image {
+	margin-bottom: var(--kdna-ab-gap);
+}
+
+.kdna-ab-preview__image img {
+	display: block;
+	max-width: 320px;
+	height: auto;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 4px;
+}
+
+.kdna-ab-preview__imagesource {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+}
+
+table.kdna-ab-preview__table {
+	max-width: 720px;
+}
+
+.kdna-ab-preview__table th {
+	width: 140px;
+	text-align: left;
+	vertical-align: top;
+}
+
+.kdna-ab-preview__url {
+	word-break: break-all;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 12px;
+}
+
+/* Stage 5, sending modes. */
+
+.kdna-ab-modes {
+	border: 0;
+	padding: 0;
+	margin: 0 0 var(--kdna-ab-gap);
+}
+
+.kdna-ab-mode {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	padding: 10px 12px;
+	margin-bottom: 8px;
+	border: 1px solid var(--kdna-ab-border);
+	border-radius: 6px;
+	cursor: pointer;
+}
+
+.kdna-ab-mode input {
+	margin-top: 3px;
+}
+
+.kdna-ab-mode strong {
+	display: block;
+}
+
+.kdna-ab-mode em {
+	display: block;
+	font-style: normal;
+	font-size: 12px;
+	color: var(--kdna-ab-muted);
+	margin-top: 2px;
+}
+
+/* Stage 7, send log badges. */
+
+.kdna-ab-log-badge {
+	display: inline-block;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 1px 10px;
+	border-radius: 999px;
+	border: 1px solid #dcdcde;
+	background: #f0f0f1;
+	color: #3c434a;
+}
+
+.kdna-ab-log-badge--sent {
+	background: #edfaef;
+	color: #1a6c2b;
+	border-color: #46b450;
+}
+
+.kdna-ab-log-badge--failed {
+	background: #fcf0f1;
+	color: #9a1b1d;
+	border-color: #d63638;
+}
+
+.kdna-ab-log-badge--held,
+.kdna-ab-log-badge--queued,
+.kdna-ab-log-badge--draft {
+	background: #fcf9e8;
+	color: #7a5c00;
+	border-color: #dba617;
+}
+
+.kdna-ab-log-badge--cancelled {
+	background: #f0f0f1;
+	color: #646970;
+}
